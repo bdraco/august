@@ -11,7 +11,7 @@ from . import DATA_AUGUST
 
 _LOGGER = logging.getLogger(__name__)
 
-SCAN_INTERVAL = timedelta(seconds=30)
+SCAN_INTERVAL = timedelta(seconds=15)
 
 
 def _retrieve_door_state(data, lock):
@@ -46,7 +46,7 @@ def _activity_time_based_state(data, doorbell, activity_types):
 
     if latest is not None:
         start = latest.activity_start_time
-        end = latest.activity_end_time + timedelta(seconds=30)
+        end = latest.activity_end_time + timedelta(seconds=15)
         return start <= datetime.now() <= end
     return None
 

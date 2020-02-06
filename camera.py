@@ -7,7 +7,7 @@ from homeassistant.components.camera import Camera
 
 from . import DATA_AUGUST, DEFAULT_TIMEOUT
 
-SCAN_INTERVAL = timedelta(seconds=30)
+SCAN_INTERVAL = timedelta(seconds=15)
 
 
 def setup_platform(hass, config, add_entities, discovery_info=None):

@@ -42,8 +42,8 @@ DEFAULT_ENTITY_NAMESPACE = "august"
 # avoid hitting rate limits
 MIN_TIME_BETWEEN_LOCK_DETAIL_UPDATES = timedelta(seconds=1800)
 
-DEFAULT_SCAN_INTERVAL = timedelta(seconds=30)
-MIN_TIME_BETWEEN_UPDATES = timedelta(seconds=30)
+DEFAULT_SCAN_INTERVAL = timedelta(seconds=15)
+MIN_TIME_BETWEEN_UPDATES = timedelta(seconds=15)
 
 LOGIN_METHODS = ["phone", "email"]
 
