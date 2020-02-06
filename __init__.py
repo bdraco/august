@@ -36,8 +36,15 @@ AUGUST_CONFIG_FILE = ".august.conf"
 DATA_AUGUST = "august"
 DOMAIN = "august"
 DEFAULT_ENTITY_NAMESPACE = "august"
-MIN_TIME_BETWEEN_UPDATES = timedelta(seconds=60)
-DEFAULT_SCAN_INTERVAL = timedelta(seconds=60)
+
+# Limit battery and hardware updates to 1800 seconds
+# in order to reduce the number of api requests and
+# avoid hitting rate limits
+MIN_TIME_BETWEEN_LOCK_DETAIL_UPDATES = timedelta(seconds=1800)
+
+DEFAULT_SCAN_INTERVAL = timedelta(seconds=30)
+MIN_TIME_BETWEEN_UPDATES = timedelta(seconds=30)
+
 LOGIN_METHODS = ["phone", "email"]
 
 CONFIG_SCHEMA = vol.Schema(
@@ -313,10 +320,13 @@ class AugustData:
         _LOGGER.debug("Completed retrieving door status")
         self._door_state_by_id = state_by_id
 
-    @Throttle(MIN_TIME_BETWEEN_UPDATES)
     def _update_locks(self):
+        self._update_locks_status()
+        self._update_locks_detail()
+
+    @Throttle(MIN_TIME_BETWEEN_UPDATES)
+    def _update_locks_status(self):
         status_by_id = {}
-        detail_by_id = {}
 
         _LOGGER.debug("Start retrieving locks status")
         for lock in self._locks:
@@ -336,6 +346,15 @@ class AugustData:
                 status_by_id[lock.device_id] = None
                 raise
 
+        _LOGGER.debug("Completed retrieving locks status")
+        self._lock_status_by_id = status_by_id
+
+    @Throttle(MIN_TIME_BETWEEN_LOCK_DETAIL_UPDATES)
+    def _update_locks_detail(self):
+        detail_by_id = {}
+
+        _LOGGER.debug("Start retrieving locks detail")
+        for lock in self._locks:
             try:
                 detail_by_id[lock.device_id] = self._api.get_lock_detail(
                     self._access_token, lock.device_id
@@ -351,8 +370,7 @@ class AugustData:
                 detail_by_id[lock.device_id] = None
                 raise
 
-        _LOGGER.debug("Completed retrieving locks status")
-        self._lock_status_by_id = status_by_id
+        _LOGGER.debug("Completed retrieving locks detail")
         self._lock_detail_by_id = detail_by_id
 
     def lock(self, device_id):
