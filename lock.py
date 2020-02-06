@@ -12,7 +12,7 @@ from . import DATA_AUGUST
 
 _LOGGER = logging.getLogger(__name__)
 
-SCAN_INTERVAL = timedelta(seconds=15)
+SCAN_INTERVAL = timedelta(seconds=10)
 
 
 def setup_platform(hass, config, add_entities, discovery_info=None):

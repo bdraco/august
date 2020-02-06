@@ -42,8 +42,8 @@ DEFAULT_ENTITY_NAMESPACE = "august"
 # avoid hitting rate limits
 MIN_TIME_BETWEEN_LOCK_DETAIL_UPDATES = timedelta(seconds=1800)
 
-DEFAULT_SCAN_INTERVAL = timedelta(seconds=15)
-MIN_TIME_BETWEEN_UPDATES = timedelta(seconds=15)
+DEFAULT_SCAN_INTERVAL = timedelta(seconds=10)
+MIN_TIME_BETWEEN_UPDATES = timedelta(seconds=10)
 
 LOGIN_METHODS = ["phone", "email"]
 
@@ -187,7 +187,10 @@ class AugustData:
         self._access_token = access_token
         self._doorbells = self._api.get_doorbells(self._access_token) or []
         self._locks = self._api.get_operable_locks(self._access_token) or []
-        self._house_ids = [d.house_id for d in self._doorbells + self._locks]
+        self._house_ids = []
+        for d in self._doorbells + self._locks:
+            if d.house_id not in self._house_ids:
+                self._house_ids.append(d.house_id)
 
         self._doorbell_detail_by_id = {}
         self._lock_status_by_id = {}
