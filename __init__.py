@@ -1,6 +1,7 @@
 """Support for August devices."""
 from datetime import timedelta
 import logging
+import time
 
 from august.api import Api
 from august.authenticator import AuthenticationState, Authenticator, ValidationResult
@@ -20,6 +21,9 @@ from homeassistant.util import Throttle
 _LOGGER = logging.getLogger(__name__)
 
 _CONFIGURING = {}
+  
+MAX_HTTP_429_RETRY_ATTEMPTS = 10
+TIME_TO_WAIT_BEFORE_RETRY_ON_429 = 2.5
 
 DEFAULT_TIMEOUT = 10
 ACTIVITY_FETCH_LIMIT = 10
@@ -145,7 +149,7 @@ def setup(hass, config):
     conf = config[DOMAIN]
     api_http_session = None
     try:
-        api_http_session = Session()
+        api_http_session = AugustHTTPSession()
     except RequestException as ex:
         _LOGGER.warning("Creating HTTP session failed with: %s", str(ex))
 
@@ -176,6 +180,32 @@ def setup(hass, config):
 
     return setup_august(hass, config, api, authenticator)
 
+# A wrapper to retry on http error 429 while
+# waiting for upstream to process https://github.com/snjoetw/py-august/pull/24
+class AugustHTTPSession(Session):
+
+  def __init__(self, *args, **kwargs):
+      return super(AugustHTTPSession, self).__init__(*args, **kwargs)
+
+  def request(self, method, url, **kwargs):
+      attempts = 0
+      response = None
+
+      # We get a higher rate limit if we pass a newer
+      # version so lets try to avoid the 429 up front
+      kwargs["headers"]["User-Agent"] = "August/2019.12.16.4708 CFNetwork/1121.2.2 Darwin/19.3.0"
+      _LOGGER.debug("Modified User-Agent header: %s", kwargs["headers"]["User-Agent"])
+
+      while(attempts < MAX_HTTP_429_RETRY_ATTEMPTS):
+          attempts += 1
+          response = super(AugustHTTPSession, self).request(method, url, **kwargs)
+          if (response.status_code == 429) and attempts < MAX_HTTP_429_RETRY_ATTEMPTS:
+             _LOGGER.debug("August sent a 429 (attempt: %d), sleeping and trying again", attempts)
+             time.sleep(TIME_TO_WAIT_BEFORE_RETRY_ON_429)
+             continue
+          break
+
+      return response
 
 class AugustData:
     """August data object."""
