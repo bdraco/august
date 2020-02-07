@@ -310,12 +310,15 @@ class AugustData:
         for lock in self._locks:
             _LOGGER.debug("Updating lock and door status for %s", lock.device_name)
             try:
-                (status_by_id[lock.device_id],state_by_id[lock.device_id]) = self._api.get_lock_status(
+                (
+                    status_by_id[lock.device_id],
+                    state_by_id[lock.device_id],
+                ) = self._api.get_lock_status(
                     self._access_token, lock.device_id, door_status=True
                 )
             except RequestException as ex:
                 _LOGGER.error(
-                    "Request error trying to retrieve locka dn door status for %s. %s",
+                    "Request error trying to retrieve lock and door status for %s. %s",
                     lock.device_name,
                     ex,
                 )
