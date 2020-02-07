@@ -180,14 +180,13 @@ def setup(hass, config):
 
     return setup_august(hass, config, api, authenticator)
 
-
-# A wrapper to retry on http error 429 while
-# waiting for upstream to process https://github.com/snjoetw/py-august/pull/24
 class AugustHTTPSession(Session):
-    def __init__(self, *args, **kwargs):
-        return super(AugustHTTPSession, self).__init__(*args, **kwargs)
+    """Wrap a requests Session object so we can retry on http error 429"""
+    # This resolves the 429 issue while
+    # waiting for upstream to process https://github.com/snjoetw/py-august/pull/24
 
     def request(self, method, url, **kwargs):
+        """Wrap the request in order to adjust the User-Agent and retry on 429"""
         attempts = 0
         response = None
 
