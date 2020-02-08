@@ -1,7 +1,6 @@
 """Support for August devices."""
 from datetime import timedelta
 import logging
-import time
 
 from august.api import Api
 from august.authenticator import AuthenticationState, Authenticator, ValidationResult
