@@ -188,9 +188,9 @@ class AugustData:
         self._doorbells = self._api.get_doorbells(self._access_token) or []
         self._locks = self._api.get_operable_locks(self._access_token) or []
         self._house_ids = []
-        for d in self._doorbells + self._locks:
-            if d.house_id not in self._house_ids:
-                self._house_ids.append(d.house_id)
+        for device in self._doorbells + self._locks:
+            if device.house_id not in self._house_ids:
+                self._house_ids.append(device.house_id)
 
         self._doorbell_detail_by_id = {}
         self._lock_status_by_id = {}

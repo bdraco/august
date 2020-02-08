@@ -90,10 +90,10 @@ class AugustLock(LockDevice):
 
         attributes = {ATTR_BATTERY_LEVEL: self._lock_detail.battery_level}
 
-        if self._lock_detail._keypad_detail is not None:
+        if self._lock_detail.keypad() is not None:
             attributes[
                 "keypad_battery_level"
-            ] = self._lock_detail._keypad_detail._battery_level
+            ] = self._lock_detail.keypad().battery_level
 
         return attributes
 
