@@ -186,8 +186,8 @@ class AugustData:
         self._hass = hass
         self._api = api
         self._access_token = access_token
-        self._doorbells = self._api.get_doorbells(self._access_token) or []
-        self._locks = self._api.get_operable_locks(self._access_token) or []
+        self._doorbells = self.api().get_doorbells(self._access_token) or []
+        self._locks = self.api().get_operable_locks(self._access_token) or []
         self._house_ids = set()
         for device in self._doorbells + self._locks:
             self._house_ids.add(device.house_id)
@@ -213,6 +213,16 @@ class AugustData:
         """Return a list of locks."""
         return self._locks
 
+    def api(self):
+        """Returns the underlying py-august api and takes
+        care of refreshing any access tokens if needed"""
+
+        # refresh_access_token does nothing if the token
+        # does not need to be refreshed
+        self._api.refresh_access_token(force=False)
+
+        return self._api
+
     def get_device_activities(self, device_id, *activity_types):
         """Return a list of activities."""
         _LOGGER.debug("Getting device activities")
@@ -235,7 +245,7 @@ class AugustData:
         for house_id in self.house_ids:
             _LOGGER.debug("Updating device activity for house id %s", house_id)
 
-            activities = self._api.get_house_activities(
+            activities = self.api().get_house_activities(
                 self._access_token, house_id, limit=limit
             )
 
@@ -259,7 +269,7 @@ class AugustData:
         for doorbell in self._doorbells:
             _LOGGER.debug("Updating doorbell status for %s", doorbell.device_name)
             try:
-                detail_by_id[doorbell.device_id] = self._api.get_doorbell_detail(
+                detail_by_id[doorbell.device_id] = self.api().get_doorbell_detail(
                     self._access_token, doorbell.device_id
                 )
             except RequestException as ex:
@@ -313,7 +323,7 @@ class AugustData:
                 (
                     status_by_id[lock.device_id],
                     state_by_id[lock.device_id],
-                ) = self._api.get_lock_status(
+                ) = self.api().get_lock_status(
                     self._access_token, lock.device_id, door_status=True
                 )
             except RequestException as ex:
@@ -340,7 +350,7 @@ class AugustData:
         _LOGGER.debug("Start retrieving locks detail")
         for lock in self._locks:
             try:
-                detail_by_id[lock.device_id] = self._api.get_lock_detail(
+                detail_by_id[lock.device_id] = self.api().get_lock_detail(
                     self._access_token, lock.device_id
                 )
             except RequestException as ex:
@@ -359,8 +369,8 @@ class AugustData:
 
     def lock(self, device_id):
         """Lock the device."""
-        return self._api.lock(self._access_token, device_id)
+        return self.api().lock(self._access_token, device_id)
 
     def unlock(self, device_id):
         """Unlock the device."""
-        return self._api.unlock(self._access_token, device_id)
+        return self.api().unlock(self._access_token, device_id)
