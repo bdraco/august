@@ -226,14 +226,20 @@ class AugustData:
         # before making an api request
         self.refresh_access_token_if_needed()
         return self._api
- 
+
     def refresh_access_token_if_needed(self):
         """Checks to see if we need to refresh the access
         token and does so if needed"""
 
         if self._authenticator.should_refresh():
-            refreshed_authentication = self._authenticator.refresh_access_token(force=False)
-            _LOGGER.info("Refreshed august access token. The old token expired at %s, and the new token expires at %s", self._access_token_expires, refreshed_authentication.access_token_expires)
+            refreshed_authentication = self._authenticator.refresh_access_token(
+                force=False
+            )
+            _LOGGER.info(
+                "Refreshed august access token. The old token expired at %s, and the new token expires at %s",
+                self._access_token_expires,
+                refreshed_authentication.access_token_expires,
+            )
             self._access_token = refreshed_authentication.access_token
             self._access_token_expires = refreshed_authentication.access_token_expires
 

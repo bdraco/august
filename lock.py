@@ -16,6 +16,7 @@ SCAN_INTERVAL = timedelta(seconds=10)
 
 PARALLEL_UPDATES = 0
 
+
 def setup_platform(hass, config, add_entities, discovery_info=None):
     """Set up August locks."""
     data = hass.data[DATA_AUGUST]
