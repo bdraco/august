@@ -43,9 +43,21 @@ class AugustLock(LockDevice):
         """Lock the device."""
         self._data.lock(self._lock.device_id)
 
+        # Recently the polling frequency was decreased
+        # in order to accomodate http 429s returned from
+        # the api.  Since this can be confusing as to
+        # why the state does not update as fast we now
+        # function opportunistically
+        self._lock_status = LockStatus.LOCKED
+        self.schedule_update_ha_state()
+
     def unlock(self, **kwargs):
         """Unlock the device."""
         self._data.unlock(self._lock.device_id)
+
+        # This now functions opportunistically (see lock for details)
+        self._lock_status = LockStatus.UNLOCKED
+        self.schedule_update_ha_state()
 
     def update(self):
         """Get the latest state of the sensor."""
