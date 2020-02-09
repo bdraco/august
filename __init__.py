@@ -124,7 +124,7 @@ def setup_august(hass, config, api, authenticator):
         if DOMAIN in _CONFIGURING:
             hass.components.configurator.request_done(_CONFIGURING.pop(DOMAIN))
 
-        hass.data[DATA_AUGUST] = AugustData(hass, api, authentication.access_token)
+        hass.data[DATA_AUGUST] = AugustData(hass, api, authentication, authenticator)
 
         for component in AUGUST_COMPONENTS:
             discovery.load_platform(hass, component, DOMAIN, {}, config)
@@ -181,13 +181,18 @@ def setup(hass, config):
 class AugustData:
     """August data object."""
 
-    def __init__(self, hass, api, access_token):
+    def __init__(self, hass, api, authentication, authenticator):
         """Init August data object."""
         self._hass = hass
         self._api = api
-        self._access_token = access_token
-        self._doorbells = self.api().get_doorbells(self._access_token) or []
-        self._locks = self.api().get_operable_locks(self._access_token) or []
+        self._authenticator = authenticator
+        self._access_token = authentication.access_token
+        self._access_token_expires = authentication.access_token_expires
+
+        self.refresh_access_token_if_needed()
+
+        self._doorbells = self._api.get_doorbells(self._access_token) or []
+        self._locks = self._api.get_operable_locks(self._access_token) or []
         self._house_ids = set()
         for device in self._doorbells + self._locks:
             self._house_ids.add(device.house_id)
@@ -217,11 +222,20 @@ class AugustData:
         """Returns the underlying py-august api and takes
         care of refreshing any access tokens if needed"""
 
-        # refresh_access_token does nothing if the token
-        # does not need to be refreshed
-        self._api.refresh_access_token(force=False)
-
+        # Check to see if we need to refresh the access token
+        # before making an api request
+        self.refresh_access_token_if_needed()
         return self._api
+ 
+    def refresh_access_token_if_needed(self):
+        """Checks to see if we need to refresh the access
+        token and does so if needed"""
+
+        if self._authenticator.should_refresh():
+            refreshed_authentication = self._authenticator.refresh_access_token(force=False)
+            _LOGGER.info("Refreshed august access token. The old token expired at %s, and the new token expires at %s", self._access_token_expires, refreshed_authentication.access_token_expires)
+            self._access_token = refreshed_authentication.access_token
+            self._access_token_expires = refreshed_authentication.access_token_expires
 
     def get_device_activities(self, device_id, *activity_types):
         """Return a list of activities."""
