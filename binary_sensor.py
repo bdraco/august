@@ -137,6 +137,52 @@ class AugustDoorBinarySensor(BinarySensorDevice):
 
         self._state = self._state == LockDoorStatus.OPEN
 
+        door_activity = self._data.get_latest_device_activity(
+           self._door, ActivityType.DOOR_OPERATION
+        )
+
+        if door_activity is not None:
+            self._sync_door_activity(door_activity)
+
+    def _update_door_state(self, door_state, update_start_time):
+        self._state = door_state
+        self._data.update_door_state(
+            self._door, door_state, update_start_time
+        )   
+
+    def _sync_door_activity(self, activity):
+        """Check the activity for the latest door open/close activity (events).
+
+        We use this to determine the door state in between calls to the lock
+        api as we update it more frequently
+        """
+        last_door_state_update_time = self._data.get_last_door_state_update_time(
+            self._door
+        )   
+
+        if activity.activity_end_time > last_door_state_update_time:
+            _LOGGER.debug(
+                "The activity log has new events for %s: [action=%s] [activity_end_time=%s] > [last_door_state_update_time=%s]",
+                self.name,
+                activity.action,
+                activity.activity_end_time,
+                last_door_state_update_time,
+            )   
+            if activity.action == "doorclosed":
+                self._update_door_state(
+                    LockDoorStatus.CLOSED, activity.activity_start_time
+                )   
+            elif activity.action == "dooropen":
+                self._update_door_state(
+                    LockDoorStatus.OPEN, activity.activity_start_time
+                )   
+            else:
+                _LOGGER.info(
+                    "Unhandled door activity action %s for %s",
+                    activity.action,
+                    self.name,
+                ) 
+
     @property
     def unique_id(self) -> str:
         """Get the unique of the door open binary sensor."""
