@@ -301,7 +301,6 @@ class AugustData:
         self._door_last_state_update_by_id[lock_id] = update_start_time
         return True
 
-
     def update_lock_status(self, lock_id, lock_status, update_start_time):
         """Set the lock status and last status update time.
 
