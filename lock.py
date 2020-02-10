@@ -91,11 +91,7 @@ class AugustLock(LockDevice):
                 activity.activity_end_time,
                 last_lock_status_update_time,
             )
-            if activity.action == "lock":
-                self._update_lock_status(
-                    LockStatus.LOCKED, activity.activity_start_time
-                )
-            elif activity.action == "onetouchlock":
+            if activity.action == "lock" or activity.action == "onetouchlock":
                 self._update_lock_status(
                     LockStatus.LOCKED, activity.activity_start_time
                 )
