@@ -292,7 +292,7 @@ class AugustData:
 
     def update_lock_status(self, lock_id, lock_status, update_start_time):
         """Sets the lock status in the data
-        
+
         This is used when the lock, unlock apis are called
         or newer activity is detected on the activity feed
         in order to keep the internal data in sync
