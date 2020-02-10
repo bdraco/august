@@ -145,7 +145,7 @@ class AugustDoorBinarySensor(BinarySensorDevice):
             self._sync_door_activity(door_activity)
 
     def _update_door_state(self, door_state, update_start_time):
-        self._state = door_state
+        self._state = door_state == LockDoorStatus.OPEN
         self._data.update_door_state(self._door, door_state, update_start_time)
 
     def _sync_door_activity(self, activity):
