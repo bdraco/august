@@ -9,6 +9,8 @@ from . import DATA_AUGUST, DEFAULT_TIMEOUT
 
 SCAN_INTERVAL = timedelta(seconds=10)
 
+PARALLEL_UPDATES = 0
+
 
 def setup_platform(hass, config, add_entities, discovery_info=None):
     """Set up August cameras."""
