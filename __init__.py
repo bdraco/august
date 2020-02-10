@@ -1,5 +1,5 @@
 """Support for August devices."""
-from datetime import timedelta, datetime
+from datetime import datetime, timedelta
 import logging
 
 from august.api import Api
@@ -291,7 +291,7 @@ class AugustData:
         self._doorbell_detail_by_id = detail_by_id
 
     def update_lock_status(self, lock_id, lock_status, update_start_time):
-        """Set the lock status and last status update time
+        """Set the lock status and last status update time.
 
         This is used when the lock, unlock apis are called
         or newer activity is detected on the activity feed
