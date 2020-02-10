@@ -353,7 +353,7 @@ class AugustData:
                     status_by_id[lock.device_id],
                     state_by_id[lock.device_id],
                 ) = self._api.get_lock_status(
-                    self._access_token, lock.device_id, door_state=True
+                    self._access_token, lock.device_id, door_status=True
                 )
                 # Since there is a a race condition between calling the
                 # lock and activity apis, we set the last update time
