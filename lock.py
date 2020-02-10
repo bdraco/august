@@ -85,7 +85,7 @@ class AugustLock(LockDevice):
 
         if activity.activity_end_time > last_lock_status_update_time:
             _LOGGER.debug(
-                "The activity log has new events for %s: [action=%s] [activity_end_time=%s] > [last_lock_status_update_time=%s] [action=%s]",
+                "The activity log has new events for %s: [action=%s] [activity_end_time=%s] > [last_lock_status_update_time=%s]",
                 self.name,
                 activity.action,
                 activity.activity_end_time,
@@ -100,7 +100,7 @@ class AugustLock(LockDevice):
                     LockStatus.UNLOCKED, activity.activity_start_time
                 )
             else:
-                _LOGGER.warn(
+                _LOGGER.info(
                     "Unhandled lock activity action %s for %s",
                     activity.action,
                     self.name,
