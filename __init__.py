@@ -291,7 +291,7 @@ class AugustData:
         self._doorbell_detail_by_id = detail_by_id
 
     def update_lock_status(self, lock_id, lock_status, update_start_time):
-        """Sets the lock status in the data
+        """Set the lock status and last status update time
 
         This is used when the lock, unlock apis are called
         or newer activity is detected on the activity feed
@@ -368,6 +368,7 @@ class AugustData:
         self._lock_last_status_update_by_id = last_status_update_by_id
 
     def get_last_lock_status_update_time(self, lock_id):
+        """Return the last time that a lock status update was seen from the august API."""
         # Since the activity api is called more frequently than
         # the lock api it is possible that the lock has not
         # been updated yet

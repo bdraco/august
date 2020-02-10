@@ -74,9 +74,11 @@ class AugustLock(LockDevice):
             self._sync_lock_activity(activity)
 
     def _sync_lock_activity(self, activity):
-        """Check the activity for the latest lock/unlock activity (events)
-        to determine the state as it is updated more frequently than the
-        lock api"""
+        """Check the activity for the latest lock/unlock activity (events).
+
+        We use this to determine the lock state in between calls to the lock
+        api as we update it more frequently
+        """
         last_lock_status_update_time = self._data.get_last_lock_status_update_time(
             self._lock.device_id
         )
