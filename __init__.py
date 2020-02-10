@@ -1,5 +1,5 @@
 """Support for August devices."""
-from datetime import timedelta, datetime
+from datetime import datetime, timedelta
 import logging
 
 from august.api import Api

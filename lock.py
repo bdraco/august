@@ -1,5 +1,5 @@
 """Support for August lock."""
-from datetime import timedelta, datetime
+from datetime import datetime, timedelta
 import logging
 
 from august.activity import ActivityType
