@@ -138,7 +138,7 @@ class AugustDoorBinarySensor(BinarySensorDevice):
         self._state = self._state == LockDoorStatus.OPEN
 
         activity = self._data.get_latest_device_activity(
-            self._door, ActivityType.DOOR_OPERATION
+            self._door.device_id, ActivityType.DOOR_OPERATION
         )
 
         if activity is not None:
@@ -146,7 +146,7 @@ class AugustDoorBinarySensor(BinarySensorDevice):
 
     def _update_door_state(self, door_state, update_start_time):
         self._state = door_state == LockDoorStatus.OPEN
-        self._data.update_door_state(self._door, door_state, update_start_time)
+        self._data.update_door_state(self._door.device_id, door_state, update_start_time)
 
     def _sync_door_activity(self, activity):
         """Check the activity for the latest door open/close activity (events).
@@ -155,7 +155,7 @@ class AugustDoorBinarySensor(BinarySensorDevice):
         api as we update it more frequently
         """
         last_door_state_update_time = self._data.get_last_door_state_update_time(
-            self._door
+            self._door.device_id
         )
 
         if activity.activity_end_time > last_door_state_update_time:
