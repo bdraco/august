@@ -331,7 +331,7 @@ class AugustData:
         status_by_id = {}
         state_by_id = {}
         last_status_update_by_id = {}
-      
+
         _LOGGER.debug("Start retrieving lock and door status")
         for lock in self._locks:
             update_start_time = datetime.now()
@@ -344,7 +344,7 @@ class AugustData:
                     self._access_token, lock.device_id, door_status=True
                 )
                 # Since there is a a race condition between calling the
-                # lock and activity apis, we set the last update time 
+                # lock and activity apis, we set the last update time
                 # BEFORE making the api call since we will compare this
                 # to activity later we want activity to win over stale lock
                 # state.
