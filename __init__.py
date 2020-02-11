@@ -379,7 +379,7 @@ class AugustData:
         self._lock_status_by_id = status_by_id
         self._door_state_by_id = state_by_id
         self._door_last_state_update_time_utc_by_id = door_last_state_update_by_id
-        self._lock_last_status_update_time_utc_by_id = last_status_update_by_id
+        self._lock_last_status_update_time_utc_by_id = lock_last_status_update_by_id
 
     def get_last_lock_status_update_time_utc(self, lock_id):
         """Return the last time that a lock status update was seen from the august API."""
