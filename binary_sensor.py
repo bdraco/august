@@ -6,6 +6,7 @@ from august.activity import ActivityType
 from august.lock import LockDoorStatus
 
 from homeassistant.components.binary_sensor import BinarySensorDevice
+from homeassistant.util import dt
 
 from . import DATA_AUGUST
 
@@ -147,10 +148,12 @@ class AugustDoorBinarySensor(BinarySensorDevice):
             self._sync_door_activity(activity)
 
     def _update_door_state(self, door_state, update_start_time):
-        self._state = door_state == LockDoorStatus.OPEN
-        self._data.update_door_state(
-            self._door.device_id, door_state, update_start_time
-        )
+        new_state = door_state == LockDoorStatus.OPEN
+        if self._state != new_state:
+            self._state = new_state
+            self._data.update_door_state(
+                self._door.device_id, door_state, update_start_time
+            )
 
     def _sync_door_activity(self, activity):
         """Check the activity for the latest door open/close activity (events).
@@ -158,26 +161,24 @@ class AugustDoorBinarySensor(BinarySensorDevice):
         We use this to determine the door state in between calls to the lock
         api as we update it more frequently
         """
-        last_door_state_update_time = self._data.get_last_door_state_update_time(
+        last_door_state_update_time_utc = self._data.get_last_door_state_update_time_utc(
             self._door.device_id
         )
+        activity_end_time_utc = dt.as_utc(activity.activity_end_time)
 
-        if activity.activity_end_time > last_door_state_update_time:
+        if activity_end_time_utc > last_door_state_update_time_utc:
             _LOGGER.debug(
-                "The activity log has new events for %s: [action=%s] [activity_end_time=%s] > [last_door_state_update_time=%s]",
+                "The activity log has new events for %s: [action=%s] [activity_end_time_utc=%s] > [last_door_state_update_time_utc=%s]",
                 self.name,
                 activity.action,
-                activity.activity_end_time,
-                last_door_state_update_time,
+                activity_end_time_utc,
+                last_door_state_update_time_utc,
             )
+            activity_start_time_utc = dt.as_utc(activity.activity_start_time)
             if activity.action == "doorclosed":
-                self._update_door_state(
-                    LockDoorStatus.CLOSED, activity.activity_start_time
-                )
+                self._update_door_state(LockDoorStatus.CLOSED, activity_start_time_utc)
             elif activity.action == "dooropen":
-                self._update_door_state(
-                    LockDoorStatus.OPEN, activity.activity_start_time
-                )
+                self._update_door_state(LockDoorStatus.OPEN, activity_start_time_utc)
             else:
                 _LOGGER.info(
                     "Unhandled door activity action %s for %s",
