@@ -92,7 +92,7 @@ class AugustLock(LockDevice):
                 self.name,
                 activity.action,
                 activity_end_time_utc,
-                last_lock_status_update_time_utc
+                last_lock_status_update_time_utc,
             )
             activity_start_time_utc = dt.as_utc(activity.activity_start_time)
             if activity.action == "lock" or activity.action == "onetouchlock":
