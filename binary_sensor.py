@@ -6,6 +6,7 @@ from august.activity import ActivityType
 from august.lock import LockDoorStatus
 
 from homeassistant.components.binary_sensor import BinarySensorDevice
+from homeassistant.util import dt
 
 from . import DATA_AUGUST
 
