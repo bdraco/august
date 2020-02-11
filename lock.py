@@ -1,5 +1,5 @@
 """Support for August lock."""
-from datetime import timedelta, datetime
+from datetime import timedelta
 import logging
 
 from august.activity import ActivityType
@@ -7,6 +7,7 @@ from august.lock import LockStatus
 
 from homeassistant.components.lock import LockDevice
 from homeassistant.const import ATTR_BATTERY_LEVEL
+from homeassistant.util import dt
 
 from . import DATA_AUGUST
 
@@ -41,20 +42,20 @@ class AugustLock(LockDevice):
 
     def lock(self, **kwargs):
         """Lock the device."""
-        update_start_time = datetime.now()
+        update_start_time_utc = dt.utcnow()
         lock_status = self._data.lock(self._lock.device_id)
-        self._update_lock_status(lock_status, update_start_time)
+        self._update_lock_status(lock_status, update_start_time_utc)
 
     def unlock(self, **kwargs):
         """Unlock the device."""
-        update_start_time = datetime.now()
+        update_start_time_utc = dt.utcnow()
         lock_status = self._data.unlock(self._lock.device_id)
-        self._update_lock_status(lock_status, update_start_time)
+        self._update_lock_status(lock_status, update_start_time_utc)
 
-    def _update_lock_status(self, lock_status, update_start_time):
+    def _update_lock_status(self, lock_status, update_start_time_utc):
         self._lock_status = lock_status
         self._data.update_lock_status(
-            self._lock.device_id, lock_status, update_start_time
+            self._lock.device_id, lock_status, update_start_time_utc
         )
         self.schedule_update_ha_state()
 
@@ -77,29 +78,31 @@ class AugustLock(LockDevice):
         """Check the activity for the latest lock/unlock activity (events)
         to determine the state as it is updated more frequently than the
         lock api"""
-        last_lock_status_update_time = self._data.get_last_lock_status_update_time(
+        last_lock_status_update_time_utc = self._data.get_last_lock_status_update_time_utc(
             self._lock.device_id
         )
+        activity_end_time_utc = dt.as_utc(activity.activity_end_time)
 
-        if activity.activity_end_time > last_lock_status_update_time:
+        if activity_end_time_utc > last_lock_status_update_time_utc:
+            activity_start_time_utc = dt.as_utc(activity.activity_start_time)
             _LOGGER.debug(
-                "The activity log has new events for %s: [action=%s] [activity_end_time=%s] > [last_lock_status_update_time=%s] [action=%s]",
+                "The activity log has new events for %s: [action=%s] [activity_end_time_utc=%s] > [last_lock_status_update_time_utc=%s] [action=%s]",
                 self.name,
                 activity.action,
-                activity.activity_end_time,
-                last_lock_status_update_time,
+                activity_end_time_utc,
+                last_lock_status_update_time_utc,
             )
             if activity.action == "lock":
                 self._update_lock_status(
-                    LockStatus.LOCKED, activity.activity_start_time
+                    LockStatus.LOCKED, activity_start_time_utc
                 )
             elif activity.action == "onetouchlock":
                 self._update_lock_status(
-                    LockStatus.LOCKED, activity.activity_start_time
+                    LockStatus.LOCKED, activity_start_time_utc
                 )
             elif activity.action == "unlock":
                 self._update_lock_status(
-                    LockStatus.UNLOCKED, activity.activity_start_time
+                    LockStatus.UNLOCKED, activity_start_time_utc
                 )
             else:
                 _LOGGER.warn(
