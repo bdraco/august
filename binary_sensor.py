@@ -156,11 +156,11 @@ class AugustDoorBinarySensor(BinarySensorDevice):
         We use this to determine the door state in between calls to the lock
         api as we update it more frequently
         """
-        last_door_state_update_time = self._data.get_last_door_state_update_time(
+        last_door_state_update_time_utc = self._data.get_last_door_state_update_time_utc(
             self._door.device_id
         )
 
-        if activity.activity_end_time > last_door_state_update_time:
+        if activity.activity_end_time > last_door_state_update_time_utc:
             _LOGGER.debug(
                 "The activity log has new events for %s: [action=%s] [activity_end_time=%s] > [last_door_state_update_time=%s]",
                 self.name,
