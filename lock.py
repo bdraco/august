@@ -53,11 +53,12 @@ class AugustLock(LockDevice):
         self._update_lock_status(lock_status, update_start_time_utc)
 
     def _update_lock_status(self, lock_status, update_start_time_utc):
-        self._lock_status = lock_status
-        self._data.update_lock_status(
-            self._lock.device_id, lock_status, update_start_time_utc
-        )
-        self.schedule_update_ha_state()
+        if self._lock_status != lock_status:
+            self._lock_status = lock_status
+            self._data.update_lock_status(
+                self._lock.device_id, lock_status, update_start_time_utc
+            )
+            self.schedule_update_ha_state()
 
     def update(self):
         """Get the latest state of the sensor."""
@@ -86,14 +87,14 @@ class AugustLock(LockDevice):
         activity_end_time_utc = dt.as_utc(activity.activity_end_time)
 
         if activity_end_time_utc > last_lock_status_update_time_utc:
-            activity_start_time_utc = dt.as_utc(activity.activity_start_time)
             _LOGGER.debug(
-                "The activity log has new events for %s: [action=%s] [activity_end_time_utc=%s] > [last_lock_status_update_time_utc=%s] [action=%s]",
+                "The activity log has new events for %s: [action=%s] [activity_end_time_utc=%s] > [last_lock_status_update_time_utc=%s]",
                 self.name,
                 activity.action,
                 activity_end_time_utc,
-                last_lock_status_update_time_utc,
+                last_lock_status_update_time_utc
             )
+            activity_start_time_utc = dt.as_utc(activity.activity_start_time)
             if activity.action == "lock" or activity.action == "onetouchlock":
                 self._update_lock_status(LockStatus.LOCKED, activity_start_time_utc)
             elif activity.action == "unlock":
