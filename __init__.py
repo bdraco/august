@@ -368,6 +368,7 @@ class AugustData:
         self._lock_last_status_update_time_utc_by_id = last_status_update_by_id
 
     def get_last_lock_status_update_time_utc(self, lock_id):
+        """Return the last time that a lock status update was seen from the august API."""
         # Since the activity api is called more frequently than
         # the lock api it is possible that the lock has not
         # been updated yet
