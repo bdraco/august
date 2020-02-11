@@ -93,17 +93,11 @@ class AugustLock(LockDevice):
                 last_lock_status_update_time_utc,
             )
             if activity.action == "lock":
-                self._update_lock_status(
-                    LockStatus.LOCKED, activity_start_time_utc
-                )
+                self._update_lock_status(LockStatus.LOCKED, activity_start_time_utc)
             elif activity.action == "onetouchlock":
-                self._update_lock_status(
-                    LockStatus.LOCKED, activity_start_time_utc
-                )
+                self._update_lock_status(LockStatus.LOCKED, activity_start_time_utc)
             elif activity.action == "unlock":
-                self._update_lock_status(
-                    LockStatus.UNLOCKED, activity_start_time_utc
-                )
+                self._update_lock_status(LockStatus.UNLOCKED, activity_start_time_utc)
             else:
                 _LOGGER.warn(
                     "Unhandled lock activity action %s for %s",
