@@ -1,4 +1,5 @@
 """Support for August devices."""
+import asyncio
 from datetime import timedelta
 import logging
 
@@ -197,6 +198,7 @@ class AugustData:
         """Init August data object."""
         self._hass = hass
         self._api = api
+        self._get_token_lock = asyncio.Lock()
         self._authenticator = authenticator
         self._access_token = authentication.access_token
         self._access_token_expires = authentication.access_token_expires
@@ -230,22 +232,30 @@ class AugustData:
         """Return a list of locks."""
         return self._locks
 
-    def _refresh_access_token_if_needed(self):
+    async def _refresh_access_token_if_needed(self):
         """Refresh the august access token if needed."""
 
         if self._authenticator.should_refresh():
-            refreshed_authentication = self._authenticator.refresh_access_token(
-                force=False
-            )
-            _LOGGER.info(
-                "Refreshed august access token. The old token expired at %s, and the new token expires at %s",
-                self._access_token_expires,
-                refreshed_authentication.access_token_expires,
-            )
-            self._access_token = refreshed_authentication.access_token
-            self._access_token_expires = refreshed_authentication.access_token_expires
+            # only grab a lock is we need it
+            async with self._get_token_lock:
+                # refresh_access_token checks again to see
+                # if the token needs a refresh before doing anything
+                # so it is safe to wait to get the lock
+                # until after should_refresh
+                refreshed_authentication = await self.hass.async_add_executor_job(
+                    self._authenticator.refresh_access_token
+                )
+                _LOGGER.info(
+                    "Refreshed august access token. The old token expired at %s, and the new token expires at %s",
+                    self._access_token_expires,
+                    refreshed_authentication.access_token_expires,
+                )
+                self._access_token = refreshed_authentication.access_token
+                self._access_token_expires = (
+                    refreshed_authentication.access_token_expires
+                )
 
-    def get_device_activities(self, device_id, *activity_types):
+    async def get_device_activities(self, device_id, *activity_types):
         """Return a list of activities."""
         _LOGGER.debug("Getting device activities")
         self._update_device_activities()
@@ -255,13 +265,13 @@ class AugustData:
             return [a for a in activities if a.activity_type in activity_types]
         return activities
 
-    def get_latest_device_activity(self, device_id, *activity_types):
+    async def get_latest_device_activity(self, device_id, *activity_types):
         """Return latest activity."""
         activities = self.get_device_activities(device_id, *activity_types)
         return next(iter(activities or []), None)
 
     @Throttle(MIN_TIME_BETWEEN_UPDATES)
-    def _update_device_activities(self, limit=ACTIVITY_FETCH_LIMIT):
+    async def _update_device_activities(self, limit=ACTIVITY_FETCH_LIMIT):
         """Update data object with latest from August API."""
 
         # This is the only place we refresh the api token

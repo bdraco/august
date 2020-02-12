@@ -60,20 +60,23 @@ class AugustLock(LockDevice):
             )
             self.schedule_update_ha_state()
 
-    def update(self):
-        """Get the latest state of the sensor."""
-        self._lock_status = self._data.get_lock_status(self._lock.device_id)
-        self._available = self._lock_status is not None
+    async def async_update(self):
+        """Get the latest state of the sensor and latest activity."""
+        await self.hass.async_add_executor_job(self._update)
 
-        self._lock_detail = self._data.get_lock_detail(self._lock.device_id)
-
-        activity = self._data.get_latest_device_activity(
+        activity = await self._data.get_latest_device_activity(
             self._lock.device_id, ActivityType.LOCK_OPERATION
         )
 
         if activity is not None:
             self._changed_by = activity.operated_by
             self._sync_lock_activity(activity)
+
+    def _update(self):
+        """Get the latest state of the sensor."""
+        self._lock_status = self._data.get_lock_status(self._lock.device_id)
+        self._available = self._lock_status is not None
+        self._lock_detail = self._data.get_lock_detail(self._lock.device_id)
 
     def _sync_lock_activity(self, activity):
         """Check the activity for the latest lock/unlock activity (events).
