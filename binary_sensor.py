@@ -14,8 +14,6 @@ _LOGGER = logging.getLogger(__name__)
 
 SCAN_INTERVAL = timedelta(seconds=10)
 
-PARALLEL_UPDATES = 0
-
 
 def _retrieve_door_state(data, lock):
     """Get the latest state of the DoorSense sensor."""

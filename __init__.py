@@ -21,7 +21,6 @@ _LOGGER = logging.getLogger(__name__)
 
 _CONFIGURING = {}
 
-PARALLEL_UPDATES = 0
 DEFAULT_TIMEOUT = 10
 ACTIVITY_FETCH_LIMIT = 10
 ACTIVITY_INITIAL_FETCH_LIMIT = 20
@@ -202,8 +201,6 @@ class AugustData:
         self._access_token = authentication.access_token
         self._access_token_expires = authentication.access_token_expires
 
-        self.refresh_access_token_if_needed()
-
         self._doorbells = self._api.get_doorbells(self._access_token) or []
         self._locks = self._api.get_operable_locks(self._access_token) or []
         self._house_ids = set()
@@ -233,18 +230,8 @@ class AugustData:
         """Return a list of locks."""
         return self._locks
 
-    def api(self):
-        """Returns the underlying py-august api and takes
-        care of refreshing any access tokens if needed"""
-
-        # Check to see if we need to refresh the access token
-        # before making an api request
-        self.refresh_access_token_if_needed()
-        return self._api
-
     def refresh_access_token_if_needed(self):
-        """Checks to see if we need to refresh the access
-        token and does so if needed"""
+        """Refresh the august access token if needed."""
 
         if self._authenticator.should_refresh():
             refreshed_authentication = self._authenticator.refresh_access_token(
@@ -276,11 +263,22 @@ class AugustData:
     @Throttle(MIN_TIME_BETWEEN_UPDATES)
     def _update_device_activities(self, limit=ACTIVITY_FETCH_LIMIT):
         """Update data object with latest from August API."""
+
+        # This is the only place we refresh the api token
+        # in order to avoid multiple threads from doing it at the same time
+        # since there will only be one activity refresh at a time
+        #
+        # In the future when this module is converted to async we should
+        # use a lock to prevent all api calls while the token
+        # is being refreshed as this is a better solution
+        #
+        self.refresh_access_token_if_needed()
+
         _LOGGER.debug("Start retrieving device activities")
         for house_id in self.house_ids:
             _LOGGER.debug("Updating device activity for house id %s", house_id)
 
-            activities = self.api().get_house_activities(
+            activities = self._api.get_house_activities(
                 self._access_token, house_id, limit=limit
             )
 
@@ -305,7 +303,7 @@ class AugustData:
         for doorbell in self._doorbells:
             _LOGGER.debug("Updating doorbell status for %s", doorbell.device_name)
             try:
-                detail_by_id[doorbell.device_id] = self.api().get_doorbell_detail(
+                detail_by_id[doorbell.device_id] = self._api.get_doorbell_detail(
                     self._access_token, doorbell.device_id
                 )
             except RequestException as ex:
@@ -383,7 +381,7 @@ class AugustData:
                 (
                     status_by_id[lock.device_id],
                     state_by_id[lock.device_id],
-                ) = self.api().get_lock_status(
+                ) = self._api.get_lock_status(
                     self._access_token, lock.device_id, door_status=True
                 )
                 # Since there is a a race condition between calling the
@@ -439,7 +437,7 @@ class AugustData:
         _LOGGER.debug("Start retrieving locks detail")
         for lock in self._locks:
             try:
-                detail_by_id[lock.device_id] = self.api().get_lock_detail(
+                detail_by_id[lock.device_id] = self._api.get_lock_detail(
                     self._access_token, lock.device_id
                 )
             except RequestException as ex:
@@ -458,8 +456,8 @@ class AugustData:
 
     def lock(self, device_id):
         """Lock the device."""
-        return self.api().lock(self._access_token, device_id)
+        return self._api.lock(self._access_token, device_id)
 
     def unlock(self, device_id):
         """Unlock the device."""
-        return self.api().unlock(self._access_token, device_id)
+        return self._api.unlock(self._access_token, device_id)
