@@ -1,10 +1,11 @@
 """Support for August devices."""
 from datetime import timedelta
 import logging
+import json
 
 from august.api import Api
 from august.authenticator import AuthenticationState, Authenticator, ValidationResult
-from requests import RequestException, Session
+from requests import RequestException, Session, HTTPError
 import voluptuous as vol
 
 from homeassistant.const import (
@@ -13,6 +14,7 @@ from homeassistant.const import (
     CONF_USERNAME,
     EVENT_HOMEASSISTANT_STOP,
 )
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import discovery
 import homeassistant.helpers.config_validation as cv
 from homeassistant.util import Throttle, dt
@@ -354,6 +356,12 @@ class AugustData:
         self._update_locks()
         return self._lock_detail_by_id.get(lock_id)
 
+    def get_lock_name(self, device_id):
+        """Return lock name."""
+        for lock in self._locks:
+            if lock.device_id==device_id:
+                return lock.device_name
+
     def get_door_state(self, lock_id):
         """Return status if the door is open or closed.
 
@@ -454,10 +462,35 @@ class AugustData:
         _LOGGER.debug("Completed retrieving locks detail")
         self._lock_detail_by_id = detail_by_id
 
+    def _call_api_operation_that_requires_bridge(self, device_name, operation_name, func, *args, **kwargs):
+        """Call an API that requires the bridge to be online."""
+        ret = None
+        try:
+            ret = func(*args, **kwargs)
+        except HTTPError as err:
+            if err.response.status_code == 422:
+               raise HomeAssistantError(f"The operation “{operation_name}” for “{device_name}” failed because the bridge (connect) is offline.")
+            elif err.response.status_code == 423:
+               raise HomeAssistantError(f"The operation “{operation_name}” for “{device_name}” failed because the bridge (connect) is in use.")
+            elif err.response.status_code == 408:
+               raise HomeAssistantError(f"The operation “{operation_name}” for “{device_name}” timed out because the bridge (connect) failed to respond.");
+            elif err.response.status_code >= 400 and err.response.status_code < 500:
+                # 4XX errors return a json error
+                # like b'{"code":97,"message":"Bridge in use"}'
+                # that is user consumable
+                json_dict = json.loads(err.response.content)
+                failure_message = json_dict.get("message")
+                raise HomeAssistantError(f"The operation “{operation_name}” for “{device_name}” failed because: {failure_message}")
+            # Since we did not get an error we know how to handle
+            # we fall though and raise
+            raise
+
+        return ret      
+
     def lock(self, device_id):
         """Lock the device."""
-        return self._api.lock(self._access_token, device_id)
+        return self._call_api_operation_that_requires_bridge(self.get_lock_name(device_id), "lock", self._api.lock, self._access_token, device_id)
 
     def unlock(self, device_id):
         """Unlock the device."""
-        return self._api.unlock(self._access_token, device_id)
+        return self._call_api_operation_that_requires_bridge(self.get_lock_name(device_id), "unlock", self._api.unlock, self._access_token, device_id)
