@@ -1,19 +1,21 @@
 """Support for August devices."""
-import json
-import logging
 from datetime import timedelta
+import logging
 
-import voluptuous as vol
 from august.api import Api
-from august.authenticator import (AuthenticationState, Authenticator,
-                                  ValidationResult)
+from august.authenticator import AuthenticationState, Authenticator, ValidationResult
 from requests import HTTPError, RequestException, Session
+import voluptuous as vol
 
-import homeassistant.helpers.config_validation as cv
-from homeassistant.const import (CONF_PASSWORD, CONF_TIMEOUT, CONF_USERNAME,
-                                 EVENT_HOMEASSISTANT_STOP)
+from homeassistant.const import (
+    CONF_PASSWORD,
+    CONF_TIMEOUT,
+    CONF_USERNAME,
+    EVENT_HOMEASSISTANT_STOP,
+)
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import discovery
+import homeassistant.helpers.config_validation as cv
 from homeassistant.util import Throttle, dt
 
 _LOGGER = logging.getLogger(__name__)
