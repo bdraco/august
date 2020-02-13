@@ -1,6 +1,6 @@
 """Support for August binary sensors."""
-from datetime import datetime, timedelta
 import logging
+from datetime import datetime, timedelta
 
 from august.activity import ACTIVITY_ACTION_STATES, ActivityType
 from august.lock import LockDoorStatus
@@ -50,6 +50,7 @@ def _activity_time_based_state(data, doorbell, activity_types):
         end = latest.activity_end_time + timedelta(seconds=30)
         return start <= datetime.now() <= end
     return None
+
 
 SENSOR_NAME = 0
 SENSOR_DEVICE_CLASS = 1
@@ -191,7 +192,8 @@ class AugustDoorBinarySensor(BinarySensorDevice):
     def unique_id(self) -> str:
         """Get the unique of the door open binary sensor."""
         return "{:s}_{:s}".format(
-            self._door.device_id, SENSOR_TYPES_DOOR[self._sensor_type][SENSOR_NAME].lower()
+            self._door.device_id,
+            SENSOR_TYPES_DOOR[self._sensor_type][SENSOR_NAME].lower(),
         )
 
 
@@ -225,7 +227,8 @@ class AugustDoorbellBinarySensor(BinarySensorDevice):
     def name(self):
         """Return the name of the binary sensor."""
         return "{} {}".format(
-            self._doorbell.device_name, SENSOR_TYPES_DOORBELL[self._sensor_type][SENSOR_NAME]
+            self._doorbell.device_name,
+            SENSOR_TYPES_DOORBELL[self._sensor_type][SENSOR_NAME],
         )
 
     def update(self):
