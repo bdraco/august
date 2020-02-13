@@ -2,7 +2,7 @@
 from datetime import timedelta
 import logging
 
-from august.api import Api
+from august.api import Api, AugustApiHTTPError
 from august.authenticator import AuthenticationState, Authenticator, ValidationResult
 from requests import HTTPError, RequestException, Session
 import voluptuous as vol
