@@ -468,22 +468,8 @@ class AugustData:
         ret = None
         try:
             ret = func(*args, **kwargs)
-        except HTTPError as err:
-            if err.response.status_code == 422:
-                raise HomeAssistantError(
-                    f"The operation {operation_name} for {device_name} failed because the bridge (connect) is offline."
-                )
-            elif err.response.status_code == 423:
-                raise HomeAssistantError(
-                    f"The operation {operation_name} for {device_name} failed because the bridge (connect) is in use."
-                )
-            elif err.response.status_code == 408:
-                raise HomeAssistantError(
-                    f"The operation {operation_name} for {device_name} timed out because the bridge (connect) failed to respond."
-                )
-            # Since we did not get an error we know how to handle
-            # we fall though and raise
-            raise
+        except AugustApiHTTPError as err:
+            raise HomeAssistantError(device_name + ": " + str(AugustApiHTTPError))
 
         return ret
 
