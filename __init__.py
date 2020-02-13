@@ -479,15 +479,6 @@ class AugustData:
                 raise HomeAssistantError(
                     f"The operation “{operation_name}” for “{device_name}” timed out because the bridge (connect) failed to respond."
                 )
-            elif err.response.status_code >= 400 and err.response.status_code < 500:
-                # 4XX errors return a json error
-                # like b'{"code":97,"message":"Bridge in use"}'
-                # that is user consumable
-                json_dict = json.loads(err.response.content)
-                failure_message = json_dict.get("message")
-                raise HomeAssistantError(
-                    f"The operation “{operation_name}” for “{device_name}” failed because: {failure_message}"
-                )
             # Since we did not get an error we know how to handle
             # we fall though and raise
             raise
