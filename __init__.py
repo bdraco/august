@@ -469,7 +469,7 @@ class AugustData:
         try:
             ret = func(*args, **kwargs)
         except AugustApiHTTPError as err:
-            raise HomeAssistantError(device_name + ": " + str(AugustApiHTTPError))
+            raise HomeAssistantError(device_name + ": " + str(err))
 
         return ret
 
