@@ -1,6 +1,6 @@
 """Support for August lock."""
-from datetime import timedelta
 import logging
+from datetime import timedelta
 
 from august.activity import ACTIVITY_ACTION_STATES, ActivityType
 from august.lock import LockStatus

@@ -1,6 +1,6 @@
 """Support for August binary sensors."""
-from datetime import datetime, timedelta
 import logging
+from datetime import datetime, timedelta
 
 from august.activity import ACTIVITY_ACTION_STATES, ActivityType
 from august.lock import LockDoorStatus
