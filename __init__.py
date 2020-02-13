@@ -129,6 +129,7 @@ def setup_august(hass, config, api, authenticator):
             title=NOTIFICATION_TITLE,
             notification_id=NOTIFICATION_ID,
         )
+        raise PlatformNotReady
 
     state = authentication.state
 
@@ -214,6 +215,31 @@ class AugustData:
         self._lock_detail_by_id = {}
         self._door_state_by_id = {}
         self._activities_by_id = {}
+        self._update_locks_detail(no_throttle=True)
+
+        self._filter_inoperative_locks()
+       
+    def _filter_inoperative_locks(self):
+        # Remove non-operative locks as there much
+        # be a bridge (August Connect) for them to
+        # be usable
+        operative_locks = []
+        for lock in self._locks:
+            if lock.device_id not in self._lock_detail_by_id: 
+               _LOGGER.info("The lock %s could not be setup because the system could not fetch details about the lock.", lock.device_name)
+               continue
+            
+            lock_detail = self._lock_detail_by_id.get(lock.device_id)
+
+            if lock_detail.bridge == None:
+               _LOGGER.info("The lock %s could not be setup because it does not have a bridge (Connect).", lock.device_name)    
+            elif not lock_detail.bridge.operative:
+               _LOGGER.info("The lock %s could not be setup because the bridge (Connect) is not operative.", lock.device_name)    
+            else:
+                operative_locks.append(lock)
+
+        self._locks = operative_locks
+
 
     @property
     def house_ids(self):
@@ -340,6 +366,12 @@ class AugustData:
         self._lock_status_by_id[lock_id] = lock_status
         self._lock_last_status_update_time_utc_by_id[lock_id] = update_start_time_utc
         return True
+
+    def lock_has_doorsense(self, lock_id):
+        """Determine if a lock has doorsense installed and can tell when the door is open or closed."""
+        # We do not update here since this is not expected
+        # to change until restart
+        return self._lock_detail_by_id.get(lock_id).doorsense
 
     def get_lock_status(self, lock_id):
         """Return status if the door is locked or unlocked.

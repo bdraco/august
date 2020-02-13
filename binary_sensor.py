@@ -51,6 +51,9 @@ def _activity_time_based_state(data, doorbell, activity_types):
         return start <= datetime.now() <= end
     return None
 
+SENSOR_NAME = 0
+SENSOR_DEVICE_CLASS = 1
+SENSOR_STATE_PROVIDER = 2
 
 # Sensor types: Name, device_class, state_provider
 SENSOR_TYPES_DOOR = {"door_open": ["Open", "door", _retrieve_door_state]}
@@ -69,18 +72,17 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
 
     for door in data.locks:
         for sensor_type in SENSOR_TYPES_DOOR:
-            state_provider = SENSOR_TYPES_DOOR[sensor_type][2]
-            if state_provider(data, door) is LockDoorStatus.UNKNOWN:
+            if not data.lock_has_doorsense(door.device_id):
                 _LOGGER.debug(
                     "Not adding sensor class %s for lock %s ",
-                    SENSOR_TYPES_DOOR[sensor_type][1],
+                    SENSOR_TYPES_DOOR[sensor_type][SENSOR_DEVICE_CLASS],
                     door.device_name,
                 )
                 continue
 
             _LOGGER.debug(
                 "Adding sensor class %s for %s",
-                SENSOR_TYPES_DOOR[sensor_type][1],
+                SENSOR_TYPES_DOOR[sensor_type][SENSOR_DEVICE_CLASS],
                 door.device_name,
             )
             devices.append(AugustDoorBinarySensor(data, sensor_type, door))
@@ -89,7 +91,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
         for sensor_type in SENSOR_TYPES_DOORBELL:
             _LOGGER.debug(
                 "Adding doorbell sensor class %s for %s",
-                SENSOR_TYPES_DOORBELL[sensor_type][1],
+                SENSOR_TYPES_DOORBELL[sensor_type][SENSOR_DEVICE_CLASS],
                 doorbell.device_name,
             )
             devices.append(AugustDoorbellBinarySensor(data, sensor_type, doorbell))
@@ -121,18 +123,18 @@ class AugustDoorBinarySensor(BinarySensorDevice):
     @property
     def device_class(self):
         """Return the class of this device, from component DEVICE_CLASSES."""
-        return SENSOR_TYPES_DOOR[self._sensor_type][1]
+        return SENSOR_TYPES_DOOR[self._sensor_type][SENSOR_DEVICE_CLASS]
 
     @property
     def name(self):
         """Return the name of the binary sensor."""
         return "{} {}".format(
-            self._door.device_name, SENSOR_TYPES_DOOR[self._sensor_type][0]
+            self._door.device_name, SENSOR_TYPES_DOOR[self._sensor_type][SENSOR_NAME]
         )
 
     def update(self):
         """Get the latest state of the sensor."""
-        state_provider = SENSOR_TYPES_DOOR[self._sensor_type][2]
+        state_provider = SENSOR_TYPES_DOOR[self._sensor_type][SENSOR_STATE_PROVIDER]
         self._state = state_provider(self._data, self._door)
         self._available = self._state is not None
 
@@ -189,7 +191,7 @@ class AugustDoorBinarySensor(BinarySensorDevice):
     def unique_id(self) -> str:
         """Get the unique of the door open binary sensor."""
         return "{:s}_{:s}".format(
-            self._door.device_id, SENSOR_TYPES_DOOR[self._sensor_type][0].lower()
+            self._door.device_id, SENSOR_TYPES_DOOR[self._sensor_type][SENSOR_NAME].lower()
         )
 
 
@@ -217,18 +219,18 @@ class AugustDoorbellBinarySensor(BinarySensorDevice):
     @property
     def device_class(self):
         """Return the class of this device, from component DEVICE_CLASSES."""
-        return SENSOR_TYPES_DOORBELL[self._sensor_type][1]
+        return SENSOR_TYPES_DOORBELL[self._sensor_type][SENSOR_DEVICE_CLASS]
 
     @property
     def name(self):
         """Return the name of the binary sensor."""
         return "{} {}".format(
-            self._doorbell.device_name, SENSOR_TYPES_DOORBELL[self._sensor_type][0]
+            self._doorbell.device_name, SENSOR_TYPES_DOORBELL[self._sensor_type][SENSOR_NAME]
         )
 
     def update(self):
         """Get the latest state of the sensor."""
-        state_provider = SENSOR_TYPES_DOORBELL[self._sensor_type][2]
+        state_provider = SENSOR_TYPES_DOORBELL[self._sensor_type][SENSOR_STATE_PROVIDER]
         self._state = state_provider(self._data, self._doorbell)
         self._available = self._doorbell.is_online
 
@@ -237,5 +239,5 @@ class AugustDoorbellBinarySensor(BinarySensorDevice):
         """Get the unique id of the doorbell sensor."""
         return "{:s}_{:s}".format(
             self._doorbell.device_id,
-            SENSOR_TYPES_DOORBELL[self._sensor_type][0].lower(),
+            SENSOR_TYPES_DOORBELL[self._sensor_type][SENSOR_NAME].lower(),
         )
