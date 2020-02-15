@@ -131,11 +131,11 @@ class AugustDoorBinarySensor(BinarySensorDevice):
             self._door.device_name, SENSOR_TYPES_DOOR[self._sensor_type][0]
         )
 
-    async def update(self):
+    async def async_update(self):
         """Get the latest state of the sensor and update activity."""
         await self.hass.async_add_executor_job(self._update)
 
-        door_activity = self._data.get_latest_device_activity(
+        door_activity = await self._data.async_get_latest_device_activity(
             self._door.device_id, ActivityType.DOOR_OPERATION
         )
 
@@ -231,7 +231,7 @@ class AugustDoorbellBinarySensor(BinarySensorDevice):
             self._doorbell.device_name, SENSOR_TYPES_DOORBELL[self._sensor_type][0]
         )
 
-    async def update(self):
+    async def async_update(self):
         """Get the latest state of the sensor."""
         await self.hass.async_add_executor_job(self._update)
 

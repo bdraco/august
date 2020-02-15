@@ -41,13 +41,13 @@ class AugustLock(LockDevice):
         self._changed_by = None
         self._available = False
 
-    async def lock(self, **kwargs):
+    async def async_lock(self, **kwargs):
         """Lock the device."""
         update_start_time_utc = dt.utcnow()
         lock_status =  await self.hass.async_add_executor_job(partial(self._data.lock,self._lock.device_id))
         self._update_lock_status(lock_status, update_start_time_utc)
 
-    async def unlock(self, **kwargs):
+    async def async_unlock(self, **kwargs):
         """Unlock the device."""
         update_start_time_utc = dt.utcnow()
         lock_status =  await self.hass.async_add_executor_job(partial(self._data.unlock,self._lock.device_id))
@@ -61,11 +61,11 @@ class AugustLock(LockDevice):
             )
             self.schedule_update_ha_state()
 
-    async def update(self):
+    async def async_update(self):
         """Get the latest state of the sensor and update activity."""
-         await self.hass.async_add_executor_job(self._update)
+        await self.hass.async_add_executor_job(self._update)
 
-        lock_activity = self._data.get_latest_device_activity(
+        lock_activity = await self._data.async_get_latest_device_activity(
             self._lock.device_id, ActivityType.LOCK_OPERATION
         )
 
@@ -77,7 +77,6 @@ class AugustLock(LockDevice):
         """Get the latest state of the sensor."""
         self._lock_status = self._data.get_lock_status(self._lock.device_id)
         self._available = self._lock_status is not None
-
         self._lock_detail = self._data.get_lock_detail(self._lock.device_id)
 
     def _sync_lock_activity(self, lock_activity):

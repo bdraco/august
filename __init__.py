@@ -1,6 +1,7 @@
 """Support for August devices."""
 from datetime import timedelta
 from functools import partial
+import asyncio
 import logging
 
 from august.api import Api
@@ -93,7 +94,7 @@ def request_configuration(hass, config, api, authenticator):
                 _CONFIGURING[DOMAIN], "Invalid verification code"
             )
         elif result == ValidationResult.VALIDATED:
-            async_setup_august(hass, config, api, authenticator)
+            setup_august(hass, config, api, authenticator)
 
     if DOMAIN not in _CONFIGURING:
         authenticator.send_verification_code()
@@ -114,12 +115,12 @@ def request_configuration(hass, config, api, authenticator):
     )
 
 
-async def async_setup_august(hass, config, api, authenticator):
+def setup_august(hass, config, api, authenticator):
     """Set up the August component."""
 
     authentication = None
     try:
-        authentication = await self.hass.async_add_executor_job(authenticator.authenticate)
+        authentication = authenticator.authenticate()
     except RequestException as ex:
         _LOGGER.error("Unable to connect to August service: %s", str(ex))
 
@@ -131,16 +132,19 @@ async def async_setup_august(hass, config, api, authenticator):
             notification_id=NOTIFICATION_ID,
         )
 
+    _LOGGER.debug("setup_august:1")
     state = authentication.state
 
     if state == AuthenticationState.AUTHENTICATED:
         if DOMAIN in _CONFIGURING:
             hass.components.configurator.request_done(_CONFIGURING.pop(DOMAIN))
 
-        hass.data[DATA_AUGUST] = await self.hass.async_add_executor_job(partial(AugustData, hass, api, authentication, authenticator))
+        _LOGGER.debug("setup_august:2")
+        hass.data[DATA_AUGUST] = AugustData(hass, api, authentication, authenticator)
+        _LOGGER.debug("setup_august:3")
 
         for component in AUGUST_COMPONENTS:
-            discovery.load_platform(hass, component, DOMAIN, {}, config)
+            hass.async_create_task(discovery.async_load_platform(hass, component, DOMAIN, {}, config))
 
         return True
     if state == AuthenticationState.BAD_PASSWORD:
@@ -157,13 +161,16 @@ async def async_setup(hass, config):
     """Set up the August component."""
 
     conf = config[DOMAIN]
+    _LOGGER.debug("async_setup:1")
     api_http_session = None
     try:
         api_http_session = Session()
     except RequestException as ex:
         _LOGGER.warning("Creating HTTP session failed with: %s", str(ex))
+    _LOGGER.debug("async_setup:2")
 
     api = Api(timeout=conf.get(CONF_TIMEOUT), http_session=api_http_session)
+    _LOGGER.debug("async_setup:3")
 
     authenticator = Authenticator(
         api,
@@ -173,6 +180,7 @@ async def async_setup(hass, config):
         install_id=conf.get(CONF_INSTALL_ID),
         access_token_cache_file=hass.config.path(AUGUST_CONFIG_FILE),
     )
+    _LOGGER.debug("async_setup:4")
 
     def close_http_session(event):
         """Close API sessions used to connect to August."""
@@ -185,10 +193,12 @@ async def async_setup(hass, config):
 
         _LOGGER.debug("August HTTP session closed.")
 
-    hass.bus.listen_once(EVENT_HOMEASSISTANT_STOP, close_http_session)
+    _LOGGER.debug("async_setup:5")
+    hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, close_http_session)
     _LOGGER.debug("Registered for Home Assistant stop event")
+    _LOGGER.debug("async_setup:6")
 
-    return async_setup_august(hass, config, api, authenticator)
+    return await hass.async_add_executor_job(partial(setup_august, hass, config, api, authenticator))
 
 
 class AugustData:
@@ -246,10 +256,15 @@ class AugustData:
             self._access_token = refreshed_authentication.access_token
             self._access_token_expires = refreshed_authentication.access_token_expires
 
+    def get_latest_device_activity(self, device_id, *activity_types):
+         return asyncio.run_coroutine_threadsafe(
+                self.async_get_latest_device_activity(device_id, *activity_types), self._hass.loop
+                ).result()
+
     async def async_get_device_activities(self, device_id, *activity_types):
         """Return a list of activities."""
-        _LOGGER.debug("Getting device activities")
-        await self.hass.async_add_executor_job(self._update_device_activities())
+        _LOGGER.debug("Getting device activities for %s", device_id)
+        await self._async_update_device_activities()
 
         activities = self._activities_by_id.get(device_id, [])
         if activity_types:
@@ -258,10 +273,13 @@ class AugustData:
 
     async def async_get_latest_device_activity(self, device_id, *activity_types):
         """Return latest activity."""
-        activities = self.async_get_device_activities(device_id, *activity_types)
+        activities = await self.async_get_device_activities(device_id, *activity_types)
         return next(iter(activities or []), None)
 
     @Throttle(MIN_TIME_BETWEEN_UPDATES)
+    async def _async_update_device_activities(self, limit=ACTIVITY_FETCH_LIMIT):
+        return await self._hass.async_add_executor_job(partial(self._update_device_activities, limit=ACTIVITY_FETCH_LIMIT))
+
     def _update_device_activities(self, limit=ACTIVITY_FETCH_LIMIT):
         """Update data object with latest from August API."""
 
