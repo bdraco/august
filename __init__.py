@@ -119,7 +119,7 @@ async def async_setup_august(hass, config, api, authenticator):
 
     authentication = None
     try:
-        authentication = authenticator.authenticate()
+        authentication = await self.hass.async_add_executor_job(authenticator.authenticate)
     except RequestException as ex:
         _LOGGER.error("Unable to connect to August service: %s", str(ex))
 
@@ -137,7 +137,7 @@ async def async_setup_august(hass, config, api, authenticator):
         if DOMAIN in _CONFIGURING:
             hass.components.configurator.request_done(_CONFIGURING.pop(DOMAIN))
 
-        hass.data[DATA_AUGUST] = AugustData(hass, api, authentication, authenticator)
+        hass.data[DATA_AUGUST] = await self.hass.async_add_executor_job(partial(AugustData, hass, api, authentication, authenticator))
 
         for component in AUGUST_COMPONENTS:
             discovery.load_platform(hass, component, DOMAIN, {}, config)
