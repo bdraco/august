@@ -132,16 +132,13 @@ def setup_august(hass, config, api, authenticator):
             notification_id=NOTIFICATION_ID,
         )
 
-    _LOGGER.debug("setup_august:1")
     state = authentication.state
 
     if state == AuthenticationState.AUTHENTICATED:
         if DOMAIN in _CONFIGURING:
             hass.components.configurator.request_done(_CONFIGURING.pop(DOMAIN))
 
-        _LOGGER.debug("setup_august:2")
         hass.data[DATA_AUGUST] = AugustData(hass, api, authentication, authenticator)
-        _LOGGER.debug("setup_august:3")
 
         for component in AUGUST_COMPONENTS:
             hass.async_create_task(discovery.async_load_platform(hass, component, DOMAIN, {}, config))
