@@ -1,5 +1,6 @@
 """Support for August binary sensors."""
 from datetime import datetime, timedelta
+from functools import partial
 import logging
 
 from august.activity import ACTIVITY_ACTION_STATES, ActivityType
@@ -62,7 +63,7 @@ SENSOR_TYPES_DOORBELL = {
 }
 
 
-def setup_platform(hass, config, add_entities, discovery_info=None):
+async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
     """Set up the August binary sensors."""
     data = hass.data[DATA_AUGUST]
     devices = []
@@ -94,7 +95,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
             )
             devices.append(AugustDoorbellBinarySensor(data, sensor_type, doorbell))
 
-    add_entities(devices, True)
+    async_add_entities(devices, True)
 
 
 class AugustDoorBinarySensor(BinarySensorDevice):
@@ -130,13 +131,9 @@ class AugustDoorBinarySensor(BinarySensorDevice):
             self._door.device_name, SENSOR_TYPES_DOOR[self._sensor_type][0]
         )
 
-    def update(self):
-        """Get the latest state of the sensor."""
-        state_provider = SENSOR_TYPES_DOOR[self._sensor_type][2]
-        self._state = state_provider(self._data, self._door)
-        self._available = self._state is not None
-
-        self._state = self._state == LockDoorStatus.OPEN
+    async def update(self):
+        """Get the latest state of the sensor and update activity."""
+        await self.hass.async_add_executor_job(self._update)
 
         door_activity = self._data.get_latest_device_activity(
             self._door.device_id, ActivityType.DOOR_OPERATION
@@ -144,6 +141,14 @@ class AugustDoorBinarySensor(BinarySensorDevice):
 
         if door_activity is not None:
             self._sync_door_activity(door_activity)
+
+    def _update(self):
+        """Get the latest state of the sensor."""
+        state_provider = SENSOR_TYPES_DOOR[self._sensor_type][2]
+        self._state = state_provider(self._data, self._door)
+        self._available = self._state is not None
+
+        self._state = self._state == LockDoorStatus.OPEN
 
     def _update_door_state(self, door_state, update_start_time):
         new_state = door_state == LockDoorStatus.OPEN
@@ -226,8 +231,11 @@ class AugustDoorbellBinarySensor(BinarySensorDevice):
             self._doorbell.device_name, SENSOR_TYPES_DOORBELL[self._sensor_type][0]
         )
 
-    def update(self):
+    async def update(self):
         """Get the latest state of the sensor."""
+        await self.hass.async_add_executor_job(self._update)
+
+    def _update(self):
         state_provider = SENSOR_TYPES_DOORBELL[self._sensor_type][2]
         self._state = state_provider(self._data, self._doorbell)
         self._available = self._doorbell.is_online

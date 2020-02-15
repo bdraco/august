@@ -1,5 +1,6 @@
 """Support for August camera."""
 from datetime import timedelta
+from functools import partial
 
 import requests
 
@@ -10,7 +11,7 @@ from . import DATA_AUGUST, DEFAULT_TIMEOUT
 SCAN_INTERVAL = timedelta(seconds=10)
 
 
-def setup_platform(hass, config, add_entities, discovery_info=None):
+async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
     """Set up August cameras."""
     data = hass.data[DATA_AUGUST]
     devices = []
@@ -18,7 +19,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
     for doorbell in data.doorbells:
         devices.append(AugustCamera(data, doorbell, DEFAULT_TIMEOUT))
 
-    add_entities(devices, True)
+    async_add_entities(devices, True)
 
 
 class AugustCamera(Camera):

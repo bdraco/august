@@ -1,5 +1,6 @@
 """Support for August devices."""
 from datetime import timedelta
+from functools import partial
 import logging
 
 from august.api import Api
@@ -92,7 +93,7 @@ def request_configuration(hass, config, api, authenticator):
                 _CONFIGURING[DOMAIN], "Invalid verification code"
             )
         elif result == ValidationResult.VALIDATED:
-            setup_august(hass, config, api, authenticator)
+            async_setup_august(hass, config, api, authenticator)
 
     if DOMAIN not in _CONFIGURING:
         authenticator.send_verification_code()
@@ -113,7 +114,7 @@ def request_configuration(hass, config, api, authenticator):
     )
 
 
-def setup_august(hass, config, api, authenticator):
+async def async_setup_august(hass, config, api, authenticator):
     """Set up the August component."""
 
     authentication = None
@@ -152,7 +153,7 @@ def setup_august(hass, config, api, authenticator):
     return False
 
 
-def setup(hass, config):
+async def async_setup(hass, config):
     """Set up the August component."""
 
     conf = config[DOMAIN]
@@ -187,7 +188,7 @@ def setup(hass, config):
     hass.bus.listen_once(EVENT_HOMEASSISTANT_STOP, close_http_session)
     _LOGGER.debug("Registered for Home Assistant stop event")
 
-    return setup_august(hass, config, api, authenticator)
+    return async_setup_august(hass, config, api, authenticator)
 
 
 class AugustData:
@@ -245,19 +246,19 @@ class AugustData:
             self._access_token = refreshed_authentication.access_token
             self._access_token_expires = refreshed_authentication.access_token_expires
 
-    def get_device_activities(self, device_id, *activity_types):
+    async def async_get_device_activities(self, device_id, *activity_types):
         """Return a list of activities."""
         _LOGGER.debug("Getting device activities")
-        self._update_device_activities()
+        await self.hass.async_add_executor_job(self._update_device_activities())
 
         activities = self._activities_by_id.get(device_id, [])
         if activity_types:
             return [a for a in activities if a.activity_type in activity_types]
         return activities
 
-    def get_latest_device_activity(self, device_id, *activity_types):
+    async def async_get_latest_device_activity(self, device_id, *activity_types):
         """Return latest activity."""
-        activities = self.get_device_activities(device_id, *activity_types)
+        activities = self.async_get_device_activities(device_id, *activity_types)
         return next(iter(activities or []), None)
 
     @Throttle(MIN_TIME_BETWEEN_UPDATES)
