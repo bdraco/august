@@ -244,7 +244,7 @@ class AugustData:
     async def _async_refresh_access_token_if_needed(self):
         """Refresh the august access token if needed."""
         if self._authenticator.should_refresh():
-            with self._token_refresh_lock:
+            async with self._token_refresh_lock:
                 await self._hass.async_add_executor_job(self._refresh_access_token)
 
     def _refresh_access_token(self):
