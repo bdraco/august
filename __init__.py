@@ -161,16 +161,13 @@ async def async_setup(hass, config):
     """Set up the August component."""
 
     conf = config[DOMAIN]
-    _LOGGER.debug("async_setup:1")
     api_http_session = None
     try:
         api_http_session = Session()
     except RequestException as ex:
         _LOGGER.warning("Creating HTTP session failed with: %s", str(ex))
-    _LOGGER.debug("async_setup:2")
 
     api = Api(timeout=conf.get(CONF_TIMEOUT), http_session=api_http_session)
-    _LOGGER.debug("async_setup:3")
 
     authenticator = Authenticator(
         api,
@@ -180,7 +177,6 @@ async def async_setup(hass, config):
         install_id=conf.get(CONF_INSTALL_ID),
         access_token_cache_file=hass.config.path(AUGUST_CONFIG_FILE),
     )
-    _LOGGER.debug("async_setup:4")
 
     def close_http_session(event):
         """Close API sessions used to connect to August."""
@@ -193,10 +189,8 @@ async def async_setup(hass, config):
 
         _LOGGER.debug("August HTTP session closed.")
 
-    _LOGGER.debug("async_setup:5")
     hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, close_http_session)
     _LOGGER.debug("Registered for Home Assistant stop event")
-    _LOGGER.debug("async_setup:6")
 
     return await hass.async_add_executor_job(partial(setup_august, hass, config, api, authenticator))
 
