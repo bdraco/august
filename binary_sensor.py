@@ -47,7 +47,7 @@ def _activity_time_based_state(data, doorbell, activity_types):
 
     if latest is not None:
         start = latest.activity_start_time
-        end = latest.activity_end_time + timedelta(seconds=45)
+        end = latest.activity_end_time + timedelta(seconds=30)
         return start <= datetime.now() <= end
     return None
 
