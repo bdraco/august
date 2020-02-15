@@ -44,13 +44,17 @@ class AugustLock(LockDevice):
     async def async_lock(self, **kwargs):
         """Lock the device."""
         update_start_time_utc = dt.utcnow()
-        lock_status =  await self.hass.async_add_executor_job(partial(self._data.lock,self._lock.device_id))
+        lock_status = await self.hass.async_add_executor_job(
+            partial(self._data.lock, self._lock.device_id)
+        )
         self._update_lock_status(lock_status, update_start_time_utc)
 
     async def async_unlock(self, **kwargs):
         """Unlock the device."""
         update_start_time_utc = dt.utcnow()
-        lock_status =  await self.hass.async_add_executor_job(partial(self._data.unlock,self._lock.device_id))
+        lock_status = await self.hass.async_add_executor_job(
+            partial(self._data.unlock, self._lock.device_id)
+        )
         self._update_lock_status(lock_status, update_start_time_utc)
 
     def _update_lock_status(self, lock_status, update_start_time_utc):

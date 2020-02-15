@@ -1,6 +1,5 @@
 """Support for August binary sensors."""
 from datetime import datetime, timedelta
-from functools import partial
 import logging
 
 from august.activity import ACTIVITY_ACTION_STATES, ActivityType
@@ -39,12 +38,16 @@ async def _async_retrieve_motion_state(data, doorbell):
 
 async def _async_retrieve_ding_state(data, doorbell):
 
-    return await _async_activity_time_based_state(data, doorbell, [ActivityType.DOORBELL_DING])
+    return await _async_activity_time_based_state(
+        data, doorbell, [ActivityType.DOORBELL_DING]
+    )
 
 
 async def _async_activity_time_based_state(data, doorbell, activity_types):
     """Get the latest state of the sensor."""
-    latest = await data.async_get_latest_device_activity(doorbell.device_id, *activity_types)
+    latest = await data.async_get_latest_device_activity(
+        doorbell.device_id, *activity_types
+    )
 
     if latest is not None:
         start = latest.activity_start_time
@@ -145,7 +148,6 @@ class AugustDoorBinarySensor(BinarySensorDevice):
 
         if door_activity is not None:
             self._sync_door_activity(door_activity)
-
 
     def _update_door_state(self, door_state, update_start_time):
         new_state = door_state == LockDoorStatus.OPEN

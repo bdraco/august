@@ -1,7 +1,7 @@
 """Support for August devices."""
+import asyncio
 from datetime import timedelta
 from functools import partial
-import asyncio
 import logging
 
 from august.api import Api
@@ -138,10 +138,14 @@ def setup_august(hass, config, api, authenticator, token_refresh_lock):
         if DOMAIN in _CONFIGURING:
             hass.components.configurator.request_done(_CONFIGURING.pop(DOMAIN))
 
-        hass.data[DATA_AUGUST] = AugustData(hass, api, authentication, authenticator, token_refresh_lock)
+        hass.data[DATA_AUGUST] = AugustData(
+            hass, api, authentication, authenticator, token_refresh_lock
+        )
 
         for component in AUGUST_COMPONENTS:
-            hass.async_create_task(discovery.async_load_platform(hass, component, DOMAIN, {}, config))
+            hass.async_create_task(
+                discovery.async_load_platform(hass, component, DOMAIN, {}, config)
+            )
 
         return True
     if state == AuthenticationState.BAD_PASSWORD:
@@ -188,10 +192,12 @@ async def async_setup(hass, config):
 
     hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, close_http_session)
     _LOGGER.debug("Registered for Home Assistant stop event")
-  
+
     token_refresh_lock = asyncio.Lock()
 
-    return await hass.async_add_executor_job(partial(setup_august, hass, config, api, authenticator, token_refresh_lock))
+    return await hass.async_add_executor_job(
+        partial(setup_august, hass, config, api, authenticator, token_refresh_lock)
+    )
 
 
 class AugustData:
@@ -240,23 +246,16 @@ class AugustData:
         if self._authenticator.should_refresh():
             with self._token_refresh_lock:
                 await self._hass.async_add_executor_job(self._refresh_access_token)
-    
+
     def _refresh_access_token(self):
-        refreshed_authentication = self._authenticator.refresh_access_token(
-                force=False
-        )
+        refreshed_authentication = self._authenticator.refresh_access_token(force=False)
         _LOGGER.info(
-                "Refreshed august access token. The old token expired at %s, and the new token expires at %s",
-                self._access_token_expires,
-                refreshed_authentication.access_token_expires,
-                )
+            "Refreshed august access token. The old token expired at %s, and the new token expires at %s",
+            self._access_token_expires,
+            refreshed_authentication.access_token_expires,
+        )
         self._access_token = refreshed_authentication.access_token
         self._access_token_expires = refreshed_authentication.access_token_expires
-
-    def get_latest_device_activity(self, device_id, *activity_types):
-         return asyncio.run_coroutine_threadsafe(
-                self.async_get_latest_device_activity(device_id, *activity_types), self._hass.loop
-                ).result()
 
     async def async_get_device_activities(self, device_id, *activity_types):
         """Return a list of activities."""
@@ -286,7 +285,9 @@ class AugustData:
         # is being refreshed as this is a better solution
         #
         await self._async_refresh_access_token_if_needed()
-        return await self._hass.async_add_executor_job(partial(self._update_device_activities, limit=ACTIVITY_FETCH_LIMIT))
+        return await self._hass.async_add_executor_job(
+            partial(self._update_device_activities, limit=ACTIVITY_FETCH_LIMIT)
+        )
 
     def _update_device_activities(self, limit=ACTIVITY_FETCH_LIMIT):
         _LOGGER.debug("Start retrieving device activities")
@@ -312,7 +313,7 @@ class AugustData:
 
     @Throttle(MIN_TIME_BETWEEN_DOORBELL_STATUS_UPDATES)
     async def _async_update_doorbells(self):
-       await self._hass.async_add_executor_job(self._update_doorbells)
+        await self._hass.async_add_executor_job(self._update_doorbells)
 
     def _update_doorbells(self):
         detail_by_id = {}

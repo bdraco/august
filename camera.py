@@ -1,6 +1,5 @@
 """Support for August camera."""
 from datetime import timedelta
-from functools import partial
 
 import requests
 
