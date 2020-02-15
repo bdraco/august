@@ -59,9 +59,9 @@ class AugustCamera(Camera):
         """Return the camera model."""
         return "Doorbell"
 
-    def camera_image(self):
+    async def async_camera_image(self):
         """Return bytes of camera image."""
-        latest = self._data.get_doorbell_detail(self._doorbell.device_id)
+        latest = await self._data.async_get_doorbell_detail(self._doorbell.device_id)
 
         if self._image_url is not latest.image_url:
             self._image_url = latest.image_url

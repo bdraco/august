@@ -80,7 +80,7 @@ CONFIG_SCHEMA = vol.Schema(
 AUGUST_COMPONENTS = ["camera", "binary_sensor", "lock"]
 
 
-def request_configuration(hass, config, api, authenticator):
+def request_configuration(hass, config, api, authenticator, token_refresh_lock):
     """Request configuration steps from the user."""
     configurator = hass.components.configurator
 
@@ -94,7 +94,7 @@ def request_configuration(hass, config, api, authenticator):
                 _CONFIGURING[DOMAIN], "Invalid verification code"
             )
         elif result == ValidationResult.VALIDATED:
-            setup_august(hass, config, api, authenticator)
+            setup_august(hass, config, api, authenticator, token_refresh_lock)
 
     if DOMAIN not in _CONFIGURING:
         authenticator.send_verification_code()
@@ -115,7 +115,7 @@ def request_configuration(hass, config, api, authenticator):
     )
 
 
-def setup_august(hass, config, api, authenticator):
+def setup_august(hass, config, api, authenticator, token_refresh_lock):
     """Set up the August component."""
 
     authentication = None
@@ -138,7 +138,7 @@ def setup_august(hass, config, api, authenticator):
         if DOMAIN in _CONFIGURING:
             hass.components.configurator.request_done(_CONFIGURING.pop(DOMAIN))
 
-        hass.data[DATA_AUGUST] = AugustData(hass, api, authentication, authenticator)
+        hass.data[DATA_AUGUST] = AugustData(hass, api, authentication, authenticator, token_refresh_lock)
 
         for component in AUGUST_COMPONENTS:
             hass.async_create_task(discovery.async_load_platform(hass, component, DOMAIN, {}, config))
@@ -148,7 +148,7 @@ def setup_august(hass, config, api, authenticator):
         _LOGGER.error("Invalid password provided")
         return False
     if state == AuthenticationState.REQUIRES_VALIDATION:
-        request_configuration(hass, config, api, authenticator)
+        request_configuration(hass, config, api, authenticator, token_refresh_lock)
         return True
 
     return False
@@ -188,14 +188,16 @@ async def async_setup(hass, config):
 
     hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, close_http_session)
     _LOGGER.debug("Registered for Home Assistant stop event")
+  
+    token_refresh_lock = asyncio.Lock()
 
-    return await hass.async_add_executor_job(partial(setup_august, hass, config, api, authenticator))
+    return await hass.async_add_executor_job(partial(setup_august, hass, config, api, authenticator, token_refresh_lock))
 
 
 class AugustData:
     """August data object."""
 
-    def __init__(self, hass, api, authentication, authenticator):
+    def __init__(self, hass, api, authentication, authenticator, token_refresh_lock):
         """Init August data object."""
         self._hass = hass
         self._api = api
@@ -203,6 +205,7 @@ class AugustData:
         self._access_token = authentication.access_token
         self._access_token_expires = authentication.access_token_expires
 
+        self._token_refresh_lock = token_refresh_lock
         self._doorbells = self._api.get_doorbells(self._access_token) or []
         self._locks = self._api.get_operable_locks(self._access_token) or []
         self._house_ids = set()
@@ -232,20 +235,23 @@ class AugustData:
         """Return a list of locks."""
         return self._locks
 
-    def _refresh_access_token_if_needed(self):
+    async def _async_refresh_access_token_if_needed(self):
         """Refresh the august access token if needed."""
-
         if self._authenticator.should_refresh():
-            refreshed_authentication = self._authenticator.refresh_access_token(
+            with self._token_refresh_lock:
+                await self._hass.async_add_executor_job(self._refresh_access_token)
+    
+    def _refresh_access_token(self):
+        refreshed_authentication = self._authenticator.refresh_access_token(
                 force=False
-            )
-            _LOGGER.info(
+        )
+        _LOGGER.info(
                 "Refreshed august access token. The old token expired at %s, and the new token expires at %s",
                 self._access_token_expires,
                 refreshed_authentication.access_token_expires,
-            )
-            self._access_token = refreshed_authentication.access_token
-            self._access_token_expires = refreshed_authentication.access_token_expires
+                )
+        self._access_token = refreshed_authentication.access_token
+        self._access_token_expires = refreshed_authentication.access_token_expires
 
     def get_latest_device_activity(self, device_id, *activity_types):
          return asyncio.run_coroutine_threadsafe(
@@ -269,9 +275,6 @@ class AugustData:
 
     @Throttle(MIN_TIME_BETWEEN_UPDATES)
     async def _async_update_device_activities(self, limit=ACTIVITY_FETCH_LIMIT):
-        return await self._hass.async_add_executor_job(partial(self._update_device_activities, limit=ACTIVITY_FETCH_LIMIT))
-
-    def _update_device_activities(self, limit=ACTIVITY_FETCH_LIMIT):
         """Update data object with latest from August API."""
 
         # This is the only place we refresh the api token
@@ -282,8 +285,10 @@ class AugustData:
         # use a lock to prevent all api calls while the token
         # is being refreshed as this is a better solution
         #
-        self._refresh_access_token_if_needed()
+        await self._async_refresh_access_token_if_needed()
+        return await self._hass.async_add_executor_job(partial(self._update_device_activities, limit=ACTIVITY_FETCH_LIMIT))
 
+    def _update_device_activities(self, limit=ACTIVITY_FETCH_LIMIT):
         _LOGGER.debug("Start retrieving device activities")
         for house_id in self.house_ids:
             _LOGGER.debug("Updating device activity for house id %s", house_id)
@@ -300,12 +305,15 @@ class AugustData:
 
         _LOGGER.debug("Completed retrieving device activities")
 
-    def get_doorbell_detail(self, doorbell_id):
+    def async_get_doorbell_detail(self, doorbell_id):
         """Return doorbell detail."""
-        self._update_doorbells()
+        await self._async_update_doorbells()
         return self._doorbell_detail_by_id.get(doorbell_id)
 
     @Throttle(MIN_TIME_BETWEEN_DOORBELL_STATUS_UPDATES)
+    def _async_update_doorbells(self):
+       await self._hass.async_add_executor_job(self._update_doorbells)
+
     def _update_doorbells(self):
         detail_by_id = {}
 
@@ -351,32 +359,35 @@ class AugustData:
         self._lock_last_status_update_time_utc_by_id[lock_id] = update_start_time_utc
         return True
 
-    def get_lock_status(self, lock_id):
+    async def async_get_lock_status(self, lock_id):
         """Return status if the door is locked or unlocked.
 
         This is status for the lock itself.
         """
-        self._update_locks()
+        self._async_update_locks()
         return self._lock_status_by_id.get(lock_id)
 
-    def get_lock_detail(self, lock_id):
+    async def async_get_lock_detail(self, lock_id):
         """Return lock detail."""
-        self._update_locks()
+        self._async_update_locks()
         return self._lock_detail_by_id.get(lock_id)
 
-    def get_door_state(self, lock_id):
+    async def async_get_door_state(self, lock_id):
         """Return status if the door is open or closed.
 
         This is the status from the door sensor.
         """
-        self._update_locks_status()
+        await self._async_update_locks_status()
         return self._door_state_by_id.get(lock_id)
 
-    def _update_locks(self):
-        self._update_locks_status()
-        self._update_locks_detail()
+    async def _async_update_locks(self):
+        await self._async_update_locks_status()
+        await self._async_update_locks_detail()
 
     @Throttle(MIN_TIME_BETWEEN_LOCK_STATUS_UPDATES)
+    def _async_update_locks_status(self):
+        await self._hass.async_add_executor_job(self._update_locks_status)
+
     def _update_locks_status(self):
         status_by_id = {}
         state_by_id = {}
@@ -441,6 +452,9 @@ class AugustData:
         return self._door_last_state_update_time_utc_by_id[lock_id]
 
     @Throttle(MIN_TIME_BETWEEN_LOCK_DETAIL_UPDATES)
+    async def _async_update_locks_detail(self):
+        await self._hass.async_add_executor_job(self._update_locks_detail)
+
     def _update_locks_detail(self):
         detail_by_id = {}
 
