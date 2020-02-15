@@ -385,7 +385,7 @@ class AugustData:
         await self._async_update_locks_detail()
 
     @Throttle(MIN_TIME_BETWEEN_LOCK_STATUS_UPDATES)
-    def _async_update_locks_status(self):
+    async def _async_update_locks_status(self):
         await self._hass.async_add_executor_job(self._update_locks_status)
 
     def _update_locks_status(self):
