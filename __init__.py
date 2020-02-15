@@ -305,13 +305,13 @@ class AugustData:
 
         _LOGGER.debug("Completed retrieving device activities")
 
-    def async_get_doorbell_detail(self, doorbell_id):
+    async def async_get_doorbell_detail(self, doorbell_id):
         """Return doorbell detail."""
         await self._async_update_doorbells()
         return self._doorbell_detail_by_id.get(doorbell_id)
 
     @Throttle(MIN_TIME_BETWEEN_DOORBELL_STATUS_UPDATES)
-    def _async_update_doorbells(self):
+    async def _async_update_doorbells(self):
        await self._hass.async_add_executor_job(self._update_doorbells)
 
     def _update_doorbells(self):
