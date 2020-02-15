@@ -230,10 +230,7 @@ class AugustDoorbellBinarySensor(BinarySensorDevice):
         """Get the latest state of the sensor."""
         state_provider = SENSOR_TYPES_DOORBELL[self._sensor_type][2]
         self._state = state_provider(self._data, self._doorbell)
-        # The doorbell will go into standby mode when there is no motion
-        # for a short while. It will wake by itself when needed so we need
-        # to consider is available or we will not report motion or dings
-        self._available = self._doorbell.is_online or self._doorbell.status == "standby"
+        self._available = self._doorbell.is_online
 
     @property
     def unique_id(self) -> str:
