@@ -224,7 +224,7 @@ class AugustData:
         self._lock_detail_by_id = {}
         self._door_state_by_id = {}
         self._activities_by_id = {}
-        self._update_locks_detail(no_throttle=True)
+        self._update_locks_detail()
 
         self._filter_inoperative_locks()
 
