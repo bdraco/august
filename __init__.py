@@ -143,9 +143,7 @@ def setup_august(hass, config, api, authenticator, token_refresh_lock):
         )
 
         for component in AUGUST_COMPONENTS:
-            hass.async_create_task(
-                discovery.async_load_platform(hass, component, DOMAIN, {}, config)
-            )
+            discovery.load_platform(hass, component, DOMAIN, {}, config)
 
         return True
     if state == AuthenticationState.BAD_PASSWORD:
@@ -196,7 +194,7 @@ async def async_setup(hass, config):
     token_refresh_lock = asyncio.Lock()
 
     return await hass.async_add_executor_job(
-        partial(setup_august, hass, config, api, authenticator, token_refresh_lock)
+        setup_august, hass, config, api, authenticator, token_refresh_lock
     )
 
 
@@ -277,13 +275,6 @@ class AugustData:
         """Update data object with latest from August API."""
 
         # This is the only place we refresh the api token
-        # in order to avoid multiple threads from doing it at the same time
-        # since there will only be one activity refresh at a time
-        #
-        # In the future when this module is converted to async we should
-        # use a lock to prevent all api calls while the token
-        # is being refreshed as this is a better solution
-        #
         await self._async_refresh_access_token_if_needed()
         return await self._hass.async_add_executor_job(
             partial(self._update_device_activities, limit=ACTIVITY_FETCH_LIMIT)
@@ -365,12 +356,12 @@ class AugustData:
 
         This is status for the lock itself.
         """
-        self._async_update_locks()
+        await self._async_update_locks()
         return self._lock_status_by_id.get(lock_id)
 
     async def async_get_lock_detail(self, lock_id):
         """Return lock detail."""
-        self._async_update_locks()
+        await self._async_update_locks()
         return self._lock_detail_by_id.get(lock_id)
 
     async def async_get_door_state(self, lock_id):
