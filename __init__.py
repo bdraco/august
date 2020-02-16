@@ -224,6 +224,10 @@ class AugustData:
         self._lock_detail_by_id = {}
         self._door_state_by_id = {}
         self._activities_by_id = {}
+
+        # We check the locks right away so we can
+        # remove inoperative ones
+        self._update_locks_status()
         self._update_locks_detail()
 
         self._filter_inoperative_locks()
