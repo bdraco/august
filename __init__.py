@@ -45,11 +45,6 @@ DEFAULT_ENTITY_NAMESPACE = "august"
 # avoid hitting rate limits
 MIN_TIME_BETWEEN_LOCK_DETAIL_UPDATES = timedelta(seconds=1800)
 
-# Limit locks status check to 900 seconds now that
-# we get the state from the lock and unlock api calls
-# and the lock and unlock activities are now captured
-MIN_TIME_BETWEEN_LOCK_STATUS_UPDATES = timedelta(seconds=900)
-
 # Doorbells need to update more frequently than locks
 # since we get an image from the doorbell api
 MIN_TIME_BETWEEN_DOORBELL_STATUS_UPDATES = timedelta(seconds=20)
@@ -218,16 +213,11 @@ class AugustData:
             self._house_ids.add(device.house_id)
 
         self._doorbell_detail_by_id = {}
-        self._door_last_state_update_time_utc_by_id = {}
-        self._lock_last_status_update_time_utc_by_id = {}
-        self._lock_status_by_id = {}
         self._lock_detail_by_id = {}
-        self._door_state_by_id = {}
         self._activities_by_id = {}
 
         # We check the locks right away so we can
         # remove inoperative ones
-        self._update_locks_status()
         self._update_locks_detail()
 
         self._filter_inoperative_locks()
@@ -344,8 +334,8 @@ class AugustData:
         This is called when newer activity is detected on the activity feed
         in order to keep the internal data in sync
         """
-        self._door_state_by_id[lock_id] = door_state
-        self._door_last_state_update_time_utc_by_id[lock_id] = update_start_time_utc
+        self._lock_detail_by_id[lock_id].door_state = door_state
+        self._lock_detail_by_id[lock_id].door_state_datetime = update_start_time_utc
         return True
 
     def update_lock_status(self, lock_id, lock_status, update_start_time_utc):
@@ -355,8 +345,8 @@ class AugustData:
         or newer activity is detected on the activity feed
         in order to keep the internal data in sync
         """
-        self._lock_status_by_id[lock_id] = lock_status
-        self._lock_last_status_update_time_utc_by_id[lock_id] = update_start_time_utc
+        self._lock_detail_by_id[lock_id].lock_status = lock_status
+        self._lock_detail_by_id[lock_id].lock_status_datetime = update_start_time_utc
         return True
 
     def lock_has_doorsense(self, lock_id):
@@ -370,12 +360,11 @@ class AugustData:
 
         This is status for the lock itself.
         """
-        await self._async_update_locks()
-        return self._lock_status_by_id.get(lock_id)
+        return self.async_get_lock_detail(lock_id).lock_status
 
     async def async_get_lock_detail(self, lock_id):
         """Return lock detail."""
-        await self._async_update_locks()
+        await self._async_update_locks_detail()
         return self._lock_detail_by_id.get(lock_id)
 
     def get_lock_name(self, device_id):
@@ -389,79 +378,15 @@ class AugustData:
 
         This is the status from the door sensor.
         """
-        await self._async_update_locks_status()
-        return self._door_state_by_id.get(lock_id)
-
-    async def _async_update_locks(self):
-        await self._async_update_locks_status()
-        await self._async_update_locks_detail()
-
-    @Throttle(MIN_TIME_BETWEEN_LOCK_STATUS_UPDATES)
-    async def _async_update_locks_status(self):
-        await self._hass.async_add_executor_job(self._update_locks_status)
-
-    def _update_locks_status(self):
-        status_by_id = {}
-        state_by_id = {}
-        lock_last_status_update_by_id = {}
-        door_last_state_update_by_id = {}
-
-        _LOGGER.debug("Start retrieving lock and door status")
-        for lock in self._locks:
-            update_start_time_utc = dt.utcnow()
-            _LOGGER.debug("Updating lock and door status for %s", lock.device_name)
-            try:
-                (
-                    status_by_id[lock.device_id],
-                    state_by_id[lock.device_id],
-                ) = self._api.get_lock_status(
-                    self._access_token, lock.device_id, door_status=True
-                )
-                # Since there is a a race condition between calling the
-                # lock and activity apis, we set the last update time
-                # BEFORE making the api call since we will compare this
-                # to activity later we want activity to win over stale lock/door
-                # state.
-                lock_last_status_update_by_id[lock.device_id] = update_start_time_utc
-                door_last_state_update_by_id[lock.device_id] = update_start_time_utc
-            except RequestException as ex:
-                _LOGGER.error(
-                    "Request error trying to retrieve lock and door status for %s. %s",
-                    lock.device_name,
-                    ex,
-                )
-                status_by_id[lock.device_id] = None
-                state_by_id[lock.device_id] = None
-            except Exception:
-                status_by_id[lock.device_id] = None
-                state_by_id[lock.device_id] = None
-                raise
-
-        _LOGGER.debug("Completed retrieving lock and door status")
-        self._lock_status_by_id = status_by_id
-        self._door_state_by_id = state_by_id
-        self._door_last_state_update_time_utc_by_id = door_last_state_update_by_id
-        self._lock_last_status_update_time_utc_by_id = lock_last_status_update_by_id
+        return self.async_get_lock_detail(lock_id).door_state
 
     def get_last_lock_status_update_time_utc(self, lock_id):
         """Return the last time that a lock status update was seen from the august API."""
-        # Since the activity api is called more frequently than
-        # the lock api it is possible that the lock has not
-        # been updated yet
-        if lock_id not in self._lock_last_status_update_time_utc_by_id:
-            return dt.utc_from_timestamp(0)
-
-        return self._lock_last_status_update_time_utc_by_id[lock_id]
+        return dt.as_utc(self.async_get_lock_detail(lock_id).lock_status_datetime)
 
     def get_last_door_state_update_time_utc(self, lock_id):
         """Return the last time that a door status update was seen from the august API."""
-        # Since the activity api is called more frequently than
-        # the lock api it is possible that the door has not
-        # been updated yet
-        if lock_id not in self._door_last_state_update_time_utc_by_id:
-            return dt.utc_from_timestamp(0)
-
-        return self._door_last_state_update_time_utc_by_id[lock_id]
+        return dt.as_utc(self.async_get_lock_detail(lock_id).door_state_datetime)
 
     @Throttle(MIN_TIME_BETWEEN_LOCK_DETAIL_UPDATES)
     async def _async_update_locks_detail(self):
