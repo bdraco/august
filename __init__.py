@@ -232,36 +232,6 @@ class AugustData:
 
         self._filter_inoperative_locks()
 
-    def _filter_inoperative_locks(self):
-        # Remove non-operative locks as there must
-        # be a bridge (August Connect) for them to
-        # be usable
-        operative_locks = []
-        for lock in self._locks:
-            if lock.device_id not in self._lock_detail_by_id:
-                _LOGGER.info(
-                    "The lock %s could not be setup because the system could not fetch details about the lock.",
-                    lock.device_name,
-                )
-                continue
-
-            lock_detail = self._lock_detail_by_id.get(lock.device_id)
-
-            if lock_detail.bridge is None:
-                _LOGGER.info(
-                    "The lock %s could not be setup because it does not have a bridge (Connect).",
-                    lock.device_name,
-                )
-            elif not lock_detail.bridge.operative:
-                _LOGGER.info(
-                    "The lock %s could not be setup because the bridge (Connect) is not operative.",
-                    lock.device_name,
-                )
-            else:
-                operative_locks.append(lock)
-
-        self._locks = operative_locks
-
     @property
     def house_ids(self):
         """Return a list of house_ids."""
@@ -539,6 +509,28 @@ class AugustData:
             self._access_token,
             device_id,
         )
+
+    def _filter_inoperative_locks(self):
+        # Remove non-operative locks as there must
+        # be a bridge (August Connect) for them to
+        # be usable
+        operative_locks = []
+        for lock in self._locks:
+            lock_detail = self._lock_detail_by_id.get(lock.device_id)
+            if lock_detail.bridge is None:
+                _LOGGER.info(
+                    "The lock %s could not be setup because it does not have a bridge (Connect).",
+                    lock.device_name,
+                )
+            elif not lock_detail.bridge.operative:
+                _LOGGER.info(
+                    "The lock %s could not be setup because the bridge (Connect) is not operative.",
+                    lock.device_name,
+                )
+            else:
+                operative_locks.append(lock)
+
+        self._locks = operative_locks
 
 
 def _call_api_operation_that_requires_bridge(
