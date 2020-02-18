@@ -355,13 +355,6 @@ class AugustData:
         # to change until restart
         return self._lock_detail_by_id.get(lock_id).doorsense
 
-    async def async_get_lock_status(self, lock_id):
-        """Return status if the door is locked or unlocked.
-
-        This is status for the lock itself.
-        """
-        return self.async_get_lock_detail(lock_id).lock_status
-
     async def async_get_lock_detail(self, lock_id):
         """Return lock detail."""
         await self._async_update_locks_detail()
@@ -372,13 +365,6 @@ class AugustData:
         for lock in self._locks:
             if lock.device_id == device_id:
                 return lock.device_name
-
-    async def async_get_door_state(self, lock_id):
-        """Return status if the door is open or closed.
-
-        This is the status from the door sensor.
-        """
-        return self.async_get_lock_detail(lock_id).door_state
 
     def get_last_lock_status_update_time_utc(self, lock_id):
         """Return the last time that a lock status update was seen from the august API."""
