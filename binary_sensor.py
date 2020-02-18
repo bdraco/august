@@ -23,6 +23,7 @@ async def _async_retrieve_door_state(data, lock):
 
     return detail.door_state
 
+
 async def _async_retrieve_online_state(data, doorbell):
     """Get the latest state of the sensor."""
     detail = await data.async_get_doorbell_detail(doorbell.device_id)
