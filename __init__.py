@@ -368,11 +368,13 @@ class AugustData:
 
     def get_last_lock_status_update_time_utc(self, lock_id):
         """Return the last time that a lock status update was seen from the august API."""
-        return dt.as_utc(self.async_get_lock_detail(lock_id).lock_status_datetime)
+        detail = await self.async_get_lock_detail(lock_id)
+        return dt.as_utc(detail.lock_status_datetime)
 
     def get_last_door_state_update_time_utc(self, lock_id):
         """Return the last time that a door status update was seen from the august API."""
-        return dt.as_utc(self.async_get_lock_detail(lock_id).door_state_datetime)
+        detail = await self.async_get_lock_detail(lock_id)
+        return dt.as_utc(detail.door_state_datetime)
 
     @Throttle(MIN_TIME_BETWEEN_LOCK_DETAIL_UPDATES)
     async def _async_update_locks_detail(self):
