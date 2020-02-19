@@ -2,7 +2,7 @@
 from datetime import timedelta
 import logging
 
-from august.activity import ACTIVITY_ACTION_STATES, ActivityType
+from august.activity import ActivityType
 from august.lock import LockStatus
 from august.util import update_lock_detail_from_activity
 
@@ -14,7 +14,7 @@ from . import DATA_AUGUST
 
 _LOGGER = logging.getLogger(__name__)
 
-SCAN_INTERVAL = timedelta(seconds=10)
+SCAN_INTERVAL = timedelta(seconds=5)
 
 
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
@@ -74,8 +74,8 @@ class AugustLock(LockDevice):
 
         if lock_activity is not None:
             self._changed_by = lock_activity.operated_by
-            update_lock_detail_from_activity( self._lock_detail, lock_activity)
-          
+            update_lock_detail_from_activity(self._lock_detail, lock_activity)
+
         self._lock_status = self._lock_detail.lock_status
         self._available = (
             self._lock_status is not None and self._lock_status != LockStatus.UNKNOWN
