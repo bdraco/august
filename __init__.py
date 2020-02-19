@@ -40,18 +40,14 @@ DATA_AUGUST = "august"
 DOMAIN = "august"
 DEFAULT_ENTITY_NAMESPACE = "august"
 
-# Limit battery and hardware updates to 1800 seconds
+# Limit battery, online, and hardware updates to 1800 seconds
 # in order to reduce the number of api requests and
 # avoid hitting rate limits
-MIN_TIME_BETWEEN_LOCK_DETAIL_UPDATES = timedelta(seconds=1800)
-
-# Doorbells need to update more frequently than locks
-# since we get an image from the doorbell api
-MIN_TIME_BETWEEN_DOORBELL_STATUS_UPDATES = timedelta(seconds=20)
+MIN_TIME_BETWEEN_DETAIL_UPDATES = timedelta(seconds=1800)
 
 # Activity needs to be checked more frequently as the
 # doorbell motion and rings are included here
-MIN_TIME_BETWEEN_UPDATES = timedelta(seconds=10)
+MIN_TIME_BETWEEN_ACTIVITY_UPDATES = timedelta(seconds=10)
 
 DEFAULT_SCAN_INTERVAL = timedelta(seconds=10)
 
@@ -268,7 +264,7 @@ class AugustData:
         activities = await self.async_get_device_activities(device_id, *activity_types)
         return next(iter(activities or []), None)
 
-    @Throttle(MIN_TIME_BETWEEN_UPDATES)
+    @Throttle(MIN_TIME_BETWEEN_ACTIVITY_UPDATES)
     async def _async_update_device_activities(self, limit=ACTIVITY_FETCH_LIMIT):
         """Update data object with latest from August API."""
 
@@ -297,11 +293,11 @@ class AugustData:
 
     async def async_get_doorbell_detail(self, device_id):
         """Return doorbell detail."""
-        await self._async_update_doorbells()
+        await self._async_update_doorbells_detail()
         return self._doorbell_detail_by_id.get(device_id)
 
-    @Throttle(MIN_TIME_BETWEEN_DOORBELL_STATUS_UPDATES)
-    async def _async_update_doorbells(self):
+    @Throttle(MIN_TIME_BETWEEN_DETAIL_UPDATES)
+    async def _async_update_doorbells_detail(self):
         await self._hass.async_add_executor_job(self._update_doorbells_detail)
 
     def _update_doorbells_detail(self):
@@ -328,7 +324,7 @@ class AugustData:
             if lock.device_id == device_id:
                 return lock.device_name
 
-    @Throttle(MIN_TIME_BETWEEN_LOCK_DETAIL_UPDATES)
+    @Throttle(MIN_TIME_BETWEEN_DETAIL_UPDATES)
     async def _async_update_locks_detail(self):
         await self._hass.async_add_executor_job(self._update_locks_detail)
 
