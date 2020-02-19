@@ -302,32 +302,12 @@ class AugustData:
 
     @Throttle(MIN_TIME_BETWEEN_DOORBELL_STATUS_UPDATES)
     async def _async_update_doorbells(self):
-        await self._hass.async_add_executor_job(self._update_doorbells)
+        await self._hass.async_add_executor_job(self._update_doorbells_detail)
 
-    def _update_doorbells(self):
-        detail_by_id = {}
-
-        _LOGGER.debug("Start retrieving doorbell details")
-        for doorbell in self._doorbells:
-            device_id = doorbell.device_id
-            _LOGGER.debug("Updating doorbell status for %s", doorbell.device_name)
-            try:
-                detail_by_id[device_id] = self._api.get_doorbell_detail(
-                    self._access_token, device_id
-                )
-            except RequestException as ex:
-                _LOGGER.error(
-                    "Request error trying to retrieve doorbell status for %s. %s",
-                    doorbell.device_name,
-                    ex,
-                )
-                detail_by_id[device_id] = None
-            except Exception:
-                detail_by_id[device_id] = None
-                raise
-
-        _LOGGER.debug("Completed retrieving doorbell details")
-        self._doorbell_detail_by_id = detail_by_id
+    def _update_doorbells_detail(self):
+        self._doorbell_detail_by_id = self._update_device_detail(
+            "doorbell", self._doorbells, self._api.get_doorbell_detail
+        )
 
     def lock_has_doorsense(self, device_id):
         """Determine if a lock has doorsense installed and can tell when the door is open or closed."""
@@ -353,19 +333,23 @@ class AugustData:
         await self._hass.async_add_executor_job(self._update_locks_detail)
 
     def _update_locks_detail(self):
+        self._lock_detail_by_id = self._update_device_detail(
+            "lock", self._locks, self._api.get_lock_detail
+        )
+
+    def _update_device_detail(self, device_type, devices, api_call):
         detail_by_id = {}
 
-        _LOGGER.debug("Start retrieving locks detail")
-        for lock in self._locks:
-            device_id = lock.device_id
+        _LOGGER.debug("Start retrieving %s detail", device_type)
+        for device in devices:
+            device_id = device.device_id
             try:
-                detail_by_id[device_id] = self._api.get_lock_detail(
-                    self._access_token, device_id
-                )
+                detail_by_id[device_id] = api_call(self._access_token, device_id)
             except RequestException as ex:
                 _LOGGER.error(
-                    "Request error trying to retrieve door details for %s. %s",
-                    lock.device_name,
+                    "Request error trying to retrieve %s details for %s. %s",
+                    device_type,
+                    device.device_name,
                     ex,
                 )
                 detail_by_id[device_id] = None
@@ -373,8 +357,8 @@ class AugustData:
                 detail_by_id[device_id] = None
                 raise
 
-        _LOGGER.debug("Completed retrieving locks detail")
-        self._lock_detail_by_id = detail_by_id
+        _LOGGER.debug("Completed retrieving %s detail", device_type)
+        return detail_by_id
 
     def lock(self, device_id):
         """Lock the device."""
