@@ -18,7 +18,7 @@ from homeassistant.const import (
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import discovery
 import homeassistant.helpers.config_validation as cv
-from homeassistant.util import Throttle, dt
+from homeassistant.util import Throttle
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -372,16 +372,6 @@ class AugustData:
         for lock in self._locks:
             if lock.device_id == device_id:
                 return lock.device_name
-
-    def get_last_lock_status_update_time_utc(self, lock_id):
-        """Return the last time that a lock status update was seen from the august API."""
-        detail = self._lock_detail_by_id[lock_id]
-        return dt.as_utc(detail.lock_status_datetime)
-
-    def get_last_door_state_update_time_utc(self, lock_id):
-        """Return the last time that a door status update was seen from the august API."""
-        detail = self._lock_detail_by_id[lock_id]
-        return dt.as_utc(detail.door_state_datetime)
 
     @Throttle(MIN_TIME_BETWEEN_LOCK_DETAIL_UPDATES)
     async def _async_update_locks_detail(self):
