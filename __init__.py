@@ -415,3 +415,8 @@ def _call_api_operation_that_requires_bridge(
         raise HomeAssistantError(device_name + ": " + str(err))
 
     return ret
+
+
+def find_linked_doorsense_unique_id(device_id):
+    """Find the unique_id assigned to doorsense sensor from the august device_id."""
+    return "{:s}_open".format(device_id)

@@ -6,13 +6,10 @@ from august.activity import ActivityType, DoorOperationActivity
 from august.lock import LockStatus
 from august.util import update_lock_detail_from_activity
 
-from homeassistant.components.august.binary_sensor import (
-    find_linked_doorsense_unique_id,
-)
 from homeassistant.components.lock import LockDevice
 from homeassistant.const import ATTR_BATTERY_LEVEL
 
-from . import DATA_AUGUST, DOMAIN
+from . import DATA_AUGUST, DOMAIN, find_linked_doorsense_unique_id
 
 _LOGGER = logging.getLogger(__name__)
 

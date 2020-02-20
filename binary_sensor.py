@@ -8,7 +8,7 @@ from august.util import update_lock_detail_from_activity
 
 from homeassistant.components.binary_sensor import BinarySensorDevice
 
-from . import DATA_AUGUST
+from . import DATA_AUGUST, find_linked_doorsense_unique_id
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -144,11 +144,6 @@ class AugustDoorBinarySensor(BinarySensorDevice):
     def unique_id(self) -> str:
         """Get the unique of the door open binary sensor."""
         return find_linked_doorsense_unique_id(self._door.device_id)
-
-
-def find_linked_doorsense_unique_id(device_id):
-    """Find the unique_id assigned to doorsense sensor from the august device_id."""
-    return "{:s}_open".format(device_id)
 
 
 class AugustDoorbellBinarySensor(BinarySensorDevice):
