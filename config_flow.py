@@ -125,7 +125,7 @@ async def validate_input(hass: core.HomeAssistant, data):
 
     # Return info that you want to store in the config entry.
     return {
-        "title": f"August ({username})",
+        "title": username,
         "data": {
             CONF_LOGIN_METHOD: data.get(CONF_LOGIN_METHOD),
             CONF_USERNAME: data.get(CONF_USERNAME),
