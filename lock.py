@@ -106,6 +106,7 @@ class AugustLock(LockDevice):
 
         if self._lock_detail is not None:
             self._firmware_version = self._lock_detail.firmware_version
+            self._model = self._lock_detail.model
 
         self._update_lock_status_from_detail()
 

@@ -152,6 +152,7 @@ class AugustDoorBinarySensor(AugustBinarySensor):
         if detail is not None:
             lock_door_state = detail.door_state
             self._firmware_version = detail.firmware_version
+            self._model = detail.model
             self._available = detail.bridge_is_online
 
         self._state = lock_door_state == LockDoorStatus.OPEN

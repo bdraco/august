@@ -86,6 +86,7 @@ class AugustCamera(Camera):
             )
 
         self._firmware_version = self._doorbell_detail.firmware_version
+        self._model = self._doorbell_detail.model
 
         return self._image_content
 
