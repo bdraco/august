@@ -60,7 +60,7 @@ class AugustCamera(Camera):
     @property
     def model(self):
         """Return the camera model."""
-        return "Doorbell"
+        return self._model
 
     async def async_camera_image(self):
         """Return bytes of camera image."""
