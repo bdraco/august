@@ -20,23 +20,22 @@ _LOGGER = logging.getLogger(__name__)
 SCAN_INTERVAL = timedelta(seconds=5)
 
 
-async def _async_retrieve_online_state(data, doorbell):
+async def _async_retrieve_online_state(data, doorbell, detail):
     """Get the latest state of the sensor."""
-    detail = await data.async_get_doorbell_detail(doorbell.device_id)
     if detail is None:
         return None
 
     return detail.is_online
 
 
-async def _async_retrieve_motion_state(data, doorbell):
+async def _async_retrieve_motion_state(data, doorbell, detail):
 
     return await _async_activity_time_based_state(
         data, doorbell, [ActivityType.DOORBELL_MOTION, ActivityType.DOORBELL_DING]
     )
 
 
-async def _async_retrieve_ding_state(data, doorbell):
+async def _async_retrieve_ding_state(data, doorbell, detail):
 
     return await _async_activity_time_based_state(
         data, doorbell, [ActivityType.DOORBELL_DING]
@@ -205,8 +204,8 @@ class AugustDoorbellBinarySensor(AugustBinarySensor):
         async_state_provider = SENSOR_TYPES_DOORBELL[self._sensor_type][
             SENSOR_STATE_PROVIDER
         ]
-        self._state = await async_state_provider(self._data, self._doorbell)
         detail = await self._data.async_get_doorbell_detail(self._doorbell.device_id)
+        self._state = await async_state_provider(self._data, self._doorbell, detail)
         # The doorbell will go into standby mode when there is no motion
         # for a short while. It will wake by itself when needed so we need
         # to consider is available or we will not report motion or dings

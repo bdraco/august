@@ -486,3 +486,13 @@ def _call_api_operation_that_requires_bridge(
 def find_linked_doorsense_unique_id(device_id):
     """Find the unique_id assigned to doorsense sensor from the august device_id."""
     return f"{device_id}_open"
+
+
+async def async_detail_provider(data, device):
+   if isinstance(device,Lock):
+       return await data.async_get_lock_detail(device.device_id)
+   if isinstance(device,Doorbell):
+       return await data.async_get_doorbell_detail(device.device_id)
+   except ValueError
+
+
