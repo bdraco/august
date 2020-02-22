@@ -85,15 +85,15 @@ async def async_request_configuration(
         )
 
         if result == ValidationResult.INVALID_VERIFICATION_CODE:
-            configurator.notify_errors(
+            await configurator.async_notify_errors(
                 _CONFIGURING[entry_id], "Invalid verification code"
             )
         elif result == ValidationResult.VALIDATED:
-            await async_setup_august(
+            return await async_setup_august(
                 hass, config_entry, api, authenticator, api_http_session,
             )
 
-        return
+        return False
 
     _LOGGER.error("Access token is no longer valid.")
     if entry_id not in _CONFIGURING:
@@ -117,7 +117,7 @@ async def async_request_configuration(
 
 
 async def async_setup_august(
-    hass, config_entry, api, authenticator, token_refresh_lock, api_http_session
+    hass, config_entry, api, authenticator, api_http_session
 ):
     """Set up the August component."""
     authentication = None
@@ -130,20 +130,23 @@ async def async_setup_august(
 
     if state == AuthenticationState.BAD_PASSWORD:
         _LOGGER.error("Password is no longer valid. Please set up August again")
+        return False
     if state == AuthenticationState.REQUIRES_VALIDATION:
         await async_request_configuration(
             hass, config_entry, api, authenticator, api_http_session
         )
+        return False
 
     if state != AuthenticationState.AUTHENTICATED:
-        raise "Unknown authentication state: " + str(state)
+        _LOGGER.error("Unknown authentication state: " + str(state))
+        return False
 
     entry_id = config_entry.entry_id
     # We still use the configurator to get a new 2fa code
     # when needed since config_flow doesn't have a way
     # to re-request if it expires
     if entry_id in _CONFIGURING:
-        hass.components.configurator.request_done(_CONFIGURING.pop(entry_id))
+        hass.components.configurator.async_request_done(_CONFIGURING.pop(entry_id))
 
     token_refresh_lock = asyncio.Lock()
 
