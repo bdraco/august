@@ -6,7 +6,7 @@ from august.util import update_doorbell_image_from_activity
 
 from homeassistant.components.camera import Camera
 
-from . import DOMAIN, DEFAULT_TIMEOUT
+from . import DEFAULT_TIMEOUT, DOMAIN
 
 SCAN_INTERVAL = timedelta(seconds=5)
 

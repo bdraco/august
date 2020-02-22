@@ -9,7 +9,7 @@ from august.util import update_lock_detail_from_activity
 from homeassistant.components.lock import LockDevice
 from homeassistant.const import ATTR_BATTERY_LEVEL
 
-from . import DOMAIN, DOMAIN, find_linked_doorsense_unique_id
+from . import DOMAIN, find_linked_doorsense_unique_id
 
 _LOGGER = logging.getLogger(__name__)
 

@@ -11,12 +11,7 @@ from requests import RequestException, Session
 import voluptuous as vol
 
 from homeassistant.config_entries import SOURCE_IMPORT, ConfigEntry
-from homeassistant.const import (
-    CONF_PASSWORD,
-    CONF_TIMEOUT,
-    CONF_USERNAME,
-    EVENT_HOMEASSISTANT_STOP,
-)
+from homeassistant.const import CONF_PASSWORD, CONF_TIMEOUT, CONF_USERNAME
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 import homeassistant.helpers.config_validation as cv
@@ -24,12 +19,8 @@ from homeassistant.util import Throttle
 
 _LOGGER = logging.getLogger(__name__)
 
-# _CONFIGURING = {}
-
 DEFAULT_TIMEOUT = 10
 ACTIVITY_FETCH_LIMIT = 10
-ACTIVITY_INITIAL_FETCH_LIMIT = 20
-
 
 CONF_ACCESS_TOKEN_CACHE_FILE = "access_token_cache_file"
 CONF_LOGIN_METHOD = "login_method"
@@ -41,7 +32,6 @@ NOTIFICATION_TITLE = "August Setup"
 AUGUST_CONFIG_FILE = ".august.conf"
 
 DOMAIN = "august"
-DEFAULT_ENTITY_NAMESPACE = "august"
 
 # Limit battery, online, and hardware updates to 1800 seconds
 # in order to reduce the number of api requests and
@@ -110,7 +100,9 @@ PLATFORMS = ["camera", "binary_sensor", "sensor", "lock"]
 #    )
 
 
-def setup_august(hass, config_entry, api, authenticator, token_refresh_lock, api_http_session):
+def setup_august(
+    hass, config_entry, api, authenticator, token_refresh_lock, api_http_session
+):
     """Set up the August component."""
 
     authentication = None
@@ -129,21 +121,15 @@ def setup_august(hass, config_entry, api, authenticator, token_refresh_lock, api
 
     state = authentication.state
 
-    import pprint
-    _LOGGER.debug("setup_august: %s", config_entry)
-
-
     if state == AuthenticationState.AUTHENTICATED:
-        # if DOMAIN in _CONFIGURING:
-        #    hass.components.configurator.request_done(_CONFIGURING.pop(DOMAIN))
-
         hass.data[DOMAIN][config_entry] = AugustData(
-            hass, api, authentication, authenticator, token_refresh_lock, api_http_session
+            hass,
+            api,
+            authentication,
+            authenticator,
+            token_refresh_lock,
+            api_http_session,
         )
-
-        _LOGGER.debug("AFTER DATA: %s", pprint.pformat(hass.data[DOMAIN][config_entry]))
-        # for component in PLATFORMS:
-        #    discovery.load_platform(hass, component, DOMAIN, {}, config)
 
         return True
     if state == AuthenticationState.BAD_PASSWORD:
@@ -206,23 +192,21 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
             conf.get(CONF_ACCESS_TOKEN_CACHE_FILE)
         ),
     )
- 
-    import pprint
-    _LOGGER.debug("FINISHED Authenticator")
-
 
     token_refresh_lock = asyncio.Lock()
 
     setup_ok = await hass.async_add_executor_job(
-        setup_august, hass, entry.entry_id, api, authenticator, token_refresh_lock, api_http_session
+        setup_august,
+        hass,
+        entry.entry_id,
+        api,
+        authenticator,
+        token_refresh_lock,
+        api_http_session,
     )
 
-    if not setup_ok: 
+    if not setup_ok:
         return False
-   
-    import pprint
-    _LOGGER.debug("data: %s", pprint.pformat(hass.data[DOMAIN][entry.entry_id]))
-
 
     for component in PLATFORMS:
         hass.async_create_task(
@@ -254,7 +238,15 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
 class AugustData:
     """August data object."""
 
-    def __init__(self, hass, api, authentication, authenticator, token_refresh_lock, api_http_session):
+    def __init__(
+        self,
+        hass,
+        api,
+        authentication,
+        authenticator,
+        token_refresh_lock,
+        api_http_session,
+    ):
         """Init August data object."""
         self._hass = hass
         self._api = api
