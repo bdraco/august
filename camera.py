@@ -84,7 +84,7 @@ class AugustCamera(Camera):
 
     def _camera_image(self):
         """Return bytes of camera image."""
-        return self._doorbell_detail.get_camera_image(timeout=self._timeout)
+        return self._doorbell_detail.get_doorbell_image(timeout=self._timeout)
 
     @property
     def unique_id(self) -> str:
