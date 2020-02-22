@@ -86,7 +86,7 @@ async def async_request_configuration(
 
         if result == ValidationResult.INVALID_VERIFICATION_CODE:
             configurator.async_notify_errors(
-                _CONFIGURING[entry_id], "Invalid verification code, please make sure you are using the latest code, and try again."
+                _CONFIGURING[entry_id], "Invalid verification code, please make sure you are using the latest code and try again."
             )
         elif result == ValidationResult.VALIDATED:
             return await async_setup_august(
