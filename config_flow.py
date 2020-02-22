@@ -94,7 +94,9 @@ async def validate_input(hass: core.HomeAssistant, data):
                 raise RequireValidation
 
             # we have to call authenticate again to write the token
-            authentication = await hass.async_add_executor_job(authenticator.authenticate)
+            authentication = await hass.async_add_executor_job(
+                authenticator.authenticate
+            )
         else:
             _LOGGER.debug(
                 "Requesting new verification code for %s via %s",
