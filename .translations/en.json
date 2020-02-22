@@ -14,7 +14,7 @@
                "login_method" : "Login Method",
                "timeout" : "Timeout (seconds)",
                "password" : "Password",
-               "username" : "Username",
+               "username" : "Username"
             }
          },
          "validation" : {
