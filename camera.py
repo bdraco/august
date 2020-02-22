@@ -6,14 +6,14 @@ from august.util import update_doorbell_image_from_activity
 
 from homeassistant.components.camera import Camera
 
-from . import DATA_AUGUST, DEFAULT_TIMEOUT
+from . import DOMAIN, DEFAULT_TIMEOUT
 
 SCAN_INTERVAL = timedelta(seconds=5)
 
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
     """Set up August cameras."""
-    data = hass.data[DATA_AUGUST][config_entry.entry_id]
+    data = hass.data[DOMAIN][config_entry.entry_id]
     devices = []
 
     for doorbell in data.doorbells:

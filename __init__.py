@@ -40,7 +40,6 @@ NOTIFICATION_TITLE = "August Setup"
 
 AUGUST_CONFIG_FILE = ".august.conf"
 
-DATA_AUGUST = "august"
 DOMAIN = "august"
 DEFAULT_ENTITY_NAMESPACE = "august"
 
@@ -111,7 +110,7 @@ PLATFORMS = ["camera", "binary_sensor", "sensor", "lock"]
 #    )
 
 
-def setup_august(hass, config_entry, api, authenticator, token_refresh_lock):
+def setup_august(hass, config_entry, api, authenticator, token_refresh_lock, api_http_session):
     """Set up the August component."""
 
     authentication = None
@@ -130,14 +129,19 @@ def setup_august(hass, config_entry, api, authenticator, token_refresh_lock):
 
     state = authentication.state
 
+    import pprint
+    _LOGGER.debug("setup_august: %s", config_entry)
+
+
     if state == AuthenticationState.AUTHENTICATED:
         # if DOMAIN in _CONFIGURING:
         #    hass.components.configurator.request_done(_CONFIGURING.pop(DOMAIN))
 
-        hass.data[DATA_AUGUST][config_entry] = AugustData(
-            hass, api, authentication, authenticator, token_refresh_lock
+        hass.data[DOMAIN][config_entry] = AugustData(
+            hass, api, authentication, authenticator, token_refresh_lock, api_http_session
         )
 
+        _LOGGER.debug("AFTER DATA: %s", pprint.pformat(hass.data[DOMAIN][config_entry]))
         # for component in PLATFORMS:
         #    discovery.load_platform(hass, component, DOMAIN, {}, config)
 
@@ -146,6 +150,7 @@ def setup_august(hass, config_entry, api, authenticator, token_refresh_lock):
         _LOGGER.error("Invalid password provided")
         return False
     if state == AuthenticationState.REQUIRES_VALIDATION:
+        _LOGGER.error("Requires Validation")
         # request_configuration(hass, config, api, authenticator, token_refresh_lock)
         return False
 
@@ -201,28 +206,23 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
             conf.get(CONF_ACCESS_TOKEN_CACHE_FILE)
         ),
     )
+ 
+    import pprint
+    _LOGGER.debug("FINISHED Authenticator")
 
-    def close_http_session(event):
-        """Close API sessions used to connect to August."""
-        _LOGGER.debug("Closing August HTTP sessions")
-        if api_http_session:
-            try:
-                api_http_session.close()
-            except RequestException:
-                pass
-
-        _LOGGER.debug("August HTTP session closed.")
-
-    hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, close_http_session)
-    _LOGGER.debug("Registered for Home Assistant stop event")
 
     token_refresh_lock = asyncio.Lock()
 
-    # TODO Store an API object for your platforms to access
-    # hass.data[DOMAIN][entry.entry_id] = MyApi(...)
-    return await hass.async_add_executor_job(
-        setup_august, hass, entry.entry_id, api, authenticator, token_refresh_lock,
+    setup_ok = await hass.async_add_executor_job(
+        setup_august, hass, entry.entry_id, api, authenticator, token_refresh_lock, api_http_session
     )
+
+    if not setup_ok: 
+        return False
+   
+    import pprint
+    _LOGGER.debug("data: %s", pprint.pformat(hass.data[DOMAIN][entry.entry_id]))
+
 
     for component in PLATFORMS:
         hass.async_create_task(
@@ -242,6 +242,9 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
             ]
         )
     )
+
+    hass.data[DOMAIN].close_http_session()
+
     if unload_ok:
         hass.data[DOMAIN].pop(entry.entry_id)
 
@@ -251,10 +254,11 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
 class AugustData:
     """August data object."""
 
-    def __init__(self, hass, api, authentication, authenticator, token_refresh_lock):
+    def __init__(self, hass, api, authentication, authenticator, token_refresh_lock, api_http_session):
         """Init August data object."""
         self._hass = hass
         self._api = api
+        self._api_http_session = api_http_session
         self._authenticator = authenticator
         self._access_token = authentication.access_token
         self._access_token_expires = authentication.access_token_expires
@@ -276,6 +280,17 @@ class AugustData:
         self._filter_inoperative_locks()
 
         self._update_doorbells_detail()
+
+    def close_http_session(self):
+        """Close API sessions used to connect to August."""
+        _LOGGER.debug("Closing August HTTP sessions")
+        if self._api_http_session:
+            try:
+                self._api_http_session.close()
+            except RequestException:
+                pass
+
+        _LOGGER.debug("August HTTP session closed.")
 
     @property
     def house_ids(self):

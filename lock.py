@@ -9,7 +9,7 @@ from august.util import update_lock_detail_from_activity
 from homeassistant.components.lock import LockDevice
 from homeassistant.const import ATTR_BATTERY_LEVEL
 
-from . import DATA_AUGUST, DOMAIN, find_linked_doorsense_unique_id
+from . import DOMAIN, DOMAIN, find_linked_doorsense_unique_id
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -18,7 +18,7 @@ SCAN_INTERVAL = timedelta(seconds=5)
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
     """Set up August locks."""
-    data = hass.data[DATA_AUGUST][config_entry.entry_id]
+    data = hass.data[DOMAIN][config_entry.entry_id]
     devices = []
 
     for lock in data.locks:

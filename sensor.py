@@ -4,7 +4,7 @@ import logging
 from homeassistant.components.sensor import DEVICE_CLASS_BATTERY
 from homeassistant.helpers.entity import Entity
 
-from . import DATA_AUGUST, MIN_TIME_BETWEEN_DETAIL_UPDATES
+from . import DOMAIN, MIN_TIME_BETWEEN_DETAIL_UPDATES
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -39,7 +39,7 @@ SENSOR_TYPES_DOORBELL = {
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
     """Set up the August sensors."""
-    data = hass.data[DATA_AUGUST][config_entry.entry_id]
+    data = hass.data[DOMAIN][config_entry.entry_id]
     devices = []
 
     for doorbell in data.doorbells:
