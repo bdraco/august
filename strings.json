@@ -3,10 +3,11 @@
     "title": "August",
     "step": {
       "user": {
-        "title": "Setup an account",
+        "title": "Setup an August account",
         "data": {
           "username": "Username",
           "password": "Password",
+          "timeout": "Timeout (seconds)"
           "login_method": "Login Method"
         }
       },
