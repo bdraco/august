@@ -79,6 +79,9 @@ async def validate_input(hass: core.HomeAssistant, data):
         if code:
             result = await hass.async_add_executor_job(authenticator.validate_verification_code,code)
             _LOGGER.debug("Verification code validation: %s", result)
+            if result == ValidationResult.VALIDATED:
+                # we have to call authenticate again to write the token
+                await hass.async_add_executor_job(authenticator.authenticate)
 
         if result != ValidationResult.VALIDATED:
             _LOGGER.debug("Requesting new verification code for %s via %s", data.get(CONF_USERNAME), data.get(CONF_LOGIN_METHOD))

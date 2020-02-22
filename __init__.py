@@ -68,42 +68,6 @@ CONFIG_SCHEMA = vol.Schema(
 
 PLATFORMS = ["camera", "binary_sensor", "sensor", "lock"]
 
-
-# def request_configuration(hass, config, api, authenticator, token_refresh_lock):
-#    """Request configuration steps from the user."""
-#    configurator = hass.components.configurator
-#
-#    def august_configuration_callback(data):
-#        """Run when the configuration callback is called."""
-#
-#        result = authenticator.validate_verification_code(data.get("verification_code"))
-#
-#        if result == ValidationResult.INVALID_VERIFICATION_CODE:
-#            configurator.notify_errors(
-#                _CONFIGURING[DOMAIN], "Invalid verification code"
-#            )
-#        elif result == ValidationResult.VALIDATED:
-#            setup_august(hass, config, api, authenticator, token_refresh_lock)
-#
-#    if DOMAIN not in _CONFIGURING:
-#        authenticator.send_verification_code()
-#
-#    conf = config[DOMAIN]
-#    username = conf.get(CONF_USERNAME)
-#    login_method = conf.get(CONF_LOGIN_METHOD)
-#
-#    _CONFIGURING[DOMAIN] = configurator.request_config(
-#        NOTIFICATION_TITLE,
-#        august_configuration_callback,
-#        description="Please check your {} ({}) and enter the verification "
-#        "code below".format(login_method, username),
-#        submit_caption="Verify",
-#        fields=[
-#            {"id": "verification_code", "name": "Verification code", "type": "string"}
-#        ],
-#    )
-
-
 def setup_august(
     hass, config_entry, api, authenticator, token_refresh_lock, api_http_session
 ):
@@ -114,14 +78,6 @@ def setup_august(
         authentication = authenticator.authenticate()
     except RequestException as ex:
         _LOGGER.error("Unable to connect to August service: %s", str(ex))
-
-        hass.components.persistent_notification.create(
-            "Error: {}<br />"
-            "You will need to restart hass after fixing."
-            "".format(ex),
-            title=NOTIFICATION_TITLE,
-            notification_id=NOTIFICATION_ID,
-        )
 
     state = authentication.state
 
@@ -137,11 +93,10 @@ def setup_august(
 
         return True
     if state == AuthenticationState.BAD_PASSWORD:
-        _LOGGER.error("Invalid password provided")
+        _LOGGER.error("Password is no longer valid. Please set up August again")
         return False
     if state == AuthenticationState.REQUIRES_VALIDATION:
-        _LOGGER.error("Requires Validation")
-        # request_configuration(hass, config, api, authenticator, token_refresh_lock)
+        _LOGGER.error("Access token is no longer valid. Please set up August again")
         return False
 
     return False
