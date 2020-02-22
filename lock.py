@@ -9,7 +9,7 @@ from august.util import update_lock_detail_from_activity
 from homeassistant.components.lock import LockDevice
 from homeassistant.const import ATTR_BATTERY_LEVEL
 
-from . import DOMAIN, find_linked_doorsense_unique_id
+from . import DOMAIN, find_linked_doorsense_unique_id, DEFAULT_NAME
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -150,7 +150,7 @@ class AugustLock(LockDevice):
         return {
             "identifiers": {(DOMAIN, self._lock.device_id)},
             "name": self._lock.device_name,
-            "manufacturer": "August",
+            "manufacturer": DEFAULT_NAME,
             "model": self._model,
             "sw_version": self._firmware_version,
         }

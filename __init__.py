@@ -21,6 +21,8 @@ from homeassistant.util import Throttle
 
 _LOGGER = logging.getLogger(__name__)
 
+DEFAULT_NAME = "August"
+
 DEFAULT_TIMEOUT = 10
 ACTIVITY_FETCH_LIMIT = 10
 

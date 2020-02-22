@@ -13,7 +13,7 @@ from homeassistant.components.binary_sensor import (
     BinarySensorDevice,
 )
 
-from . import DOMAIN, find_linked_doorsense_unique_id
+from . import DOMAIN, find_linked_doorsense_unique_id, DEFAULT_NAME
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -167,7 +167,7 @@ class AugustDoorBinarySensor(AugustBinarySensor):
         return {
             "identifiers": {(DOMAIN, self._door.device_id)},
             "name": self._door.device_name,
-            "manufacturer": "August",
+            "manufacturer": DEFAULT_NAME,
             "model": self._model,
             "sw_version": self._firmware_version,
         }

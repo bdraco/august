@@ -4,7 +4,7 @@ import logging
 from homeassistant.components.sensor import DEVICE_CLASS_BATTERY
 from homeassistant.helpers.entity import Entity
 
-from . import DOMAIN, MIN_TIME_BETWEEN_DETAIL_UPDATES, async_detail_provider
+from . import DOMAIN, MIN_TIME_BETWEEN_DETAIL_UPDATES, async_detail_provider, DEFAULT_NAME
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -170,7 +170,7 @@ class AugustBatterySensor(Entity):
         return {
             "identifiers": {(DOMAIN, self._device.device_id)},
             "name": self._device.device_name,
-            "manufacturer": "August",
+            "manufacturer": DEFAULT_NAME,
             "model": self._model,
             "sw_version": self._firmware_version,
         }

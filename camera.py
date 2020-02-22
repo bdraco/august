@@ -6,7 +6,7 @@ from august.util import update_doorbell_image_from_activity
 
 from homeassistant.components.camera import Camera
 
-from . import DEFAULT_TIMEOUT, DOMAIN
+from . import DEFAULT_TIMEOUT, DOMAIN, DEFAULT_NAME
 
 SCAN_INTERVAL = timedelta(seconds=5)
 
@@ -55,7 +55,7 @@ class AugustCamera(Camera):
     @property
     def brand(self):
         """Return the camera brand."""
-        return "August"
+        return DEFAULT_NAME
 
     @property
     def model(self):
@@ -104,7 +104,7 @@ class AugustCamera(Camera):
         return {
             "identifiers": {(DOMAIN, self._doorbell.device_id)},
             "name": self._doorbell.device_name,
-            "manufacturer": "August",
+            "manufacturer": DEFAULT_NAME,
             "model": self._model,
             "sw_version": self._firmware_version,
         }
