@@ -99,10 +99,11 @@ class AugustDoorbellSensor(Entity):
             SENSOR_STATE_PROVIDER
         ]
         self._state = await async_state_provider(self._data, self._doorbell)
+        detail = await self._data.async_get_doorbell_detail(self._doorbell.device_id)
         # The doorbell will go into standby mode when there is no motion
         # for a short while. It will wake by itself when needed so we need
         # to consider is available or we will not report motion or dings
-        self._available = self._doorbell.is_online or self._doorbell.is_standby
+        self._available = detail is not None and (detail.is_online or detail.is_standby)
 
     @property
     def unique_id(self) -> str:
