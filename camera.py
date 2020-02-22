@@ -1,13 +1,14 @@
 """Support for August camera."""
 from datetime import timedelta
 
-import requests
+from august.activity import ActivityType
+from august.util import update_doorbell_image_from_activity
 
 from homeassistant.components.camera import Camera
 
 from . import DATA_AUGUST, DEFAULT_TIMEOUT
 
-SCAN_INTERVAL = timedelta(seconds=10)
+SCAN_INTERVAL = timedelta(seconds=5)
 
 
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
@@ -29,6 +30,7 @@ class AugustCamera(Camera):
         super().__init__()
         self._data = data
         self._doorbell = doorbell
+        self._doorbell_detail = None
         self._timeout = timeout
         self._image_url = None
         self._image_content = None
@@ -60,10 +62,20 @@ class AugustCamera(Camera):
 
     async def async_camera_image(self):
         """Return bytes of camera image."""
-        latest = await self._data.async_get_doorbell_detail(self._doorbell.device_id)
+        self._doorbell_detail = await self._data.async_get_doorbell_detail(
+            self._doorbell.device_id
+        )
+        doorbell_activity = await self._data.async_get_latest_device_activity(
+            self._doorbell.device_id, ActivityType.DOORBELL_MOTION
+        )
 
-        if self._image_url is not latest.image_url:
-            self._image_url = latest.image_url
+        if doorbell_activity is not None:
+            update_doorbell_image_from_activity(
+                self._doorbell_detail, doorbell_activity
+            )
+
+        if self._image_url is not self._doorbell_detail.image_url:
+            self._image_url = self._doorbell_detail.image_url
             self._image_content = await self.hass.async_add_executor_job(
                 self._camera_image
             )
@@ -71,9 +83,8 @@ class AugustCamera(Camera):
         return self._image_content
 
     def _camera_image(self):
-        """Return bytes of camera image via http get."""
-        # Move this to py-august: see issue#32048
-        return requests.get(self._image_url, timeout=self._timeout).content
+        """Return bytes of camera image."""
+        return self._doorbell_detail.get_camera_image(timeout=self._timeout)
 
     @property
     def unique_id(self) -> str:
