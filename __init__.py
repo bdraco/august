@@ -4,25 +4,27 @@ from datetime import timedelta
 from functools import partial
 import logging
 
+# , ValidationResult
 from august.api import Api, AugustApiHTTPError
-from august.authenticator import AuthenticationState, Authenticator, ValidationResult
+from august.authenticator import AuthenticationState, Authenticator
 from requests import RequestException, Session
 import voluptuous as vol
 
+from homeassistant.config_entries import SOURCE_IMPORT, ConfigEntry
 from homeassistant.const import (
     CONF_PASSWORD,
     CONF_TIMEOUT,
     CONF_USERNAME,
     EVENT_HOMEASSISTANT_STOP,
 )
+from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
-from homeassistant.helpers import discovery
 import homeassistant.helpers.config_validation as cv
 from homeassistant.util import Throttle
 
 _LOGGER = logging.getLogger(__name__)
 
-_CONFIGURING = {}
+# _CONFIGURING = {}
 
 DEFAULT_TIMEOUT = 10
 ACTIVITY_FETCH_LIMIT = 10
@@ -69,45 +71,45 @@ CONFIG_SCHEMA = vol.Schema(
     extra=vol.ALLOW_EXTRA,
 )
 
-AUGUST_COMPONENTS = ["camera", "binary_sensor", "sensor", "lock"]
+PLATFORMS = ["camera", "binary_sensor", "sensor", "lock"]
 
 
-def request_configuration(hass, config, api, authenticator, token_refresh_lock):
-    """Request configuration steps from the user."""
-    configurator = hass.components.configurator
+# def request_configuration(hass, config, api, authenticator, token_refresh_lock):
+#    """Request configuration steps from the user."""
+#    configurator = hass.components.configurator
+#
+#    def august_configuration_callback(data):
+#        """Run when the configuration callback is called."""
+#
+#        result = authenticator.validate_verification_code(data.get("verification_code"))
+#
+#        if result == ValidationResult.INVALID_VERIFICATION_CODE:
+#            configurator.notify_errors(
+#                _CONFIGURING[DOMAIN], "Invalid verification code"
+#            )
+#        elif result == ValidationResult.VALIDATED:
+#            setup_august(hass, config, api, authenticator, token_refresh_lock)
+#
+#    if DOMAIN not in _CONFIGURING:
+#        authenticator.send_verification_code()
+#
+#    conf = config[DOMAIN]
+#    username = conf.get(CONF_USERNAME)
+#    login_method = conf.get(CONF_LOGIN_METHOD)
+#
+#    _CONFIGURING[DOMAIN] = configurator.request_config(
+#        NOTIFICATION_TITLE,
+#        august_configuration_callback,
+#        description="Please check your {} ({}) and enter the verification "
+#        "code below".format(login_method, username),
+#        submit_caption="Verify",
+#        fields=[
+#            {"id": "verification_code", "name": "Verification code", "type": "string"}
+#        ],
+#    )
 
-    def august_configuration_callback(data):
-        """Run when the configuration callback is called."""
 
-        result = authenticator.validate_verification_code(data.get("verification_code"))
-
-        if result == ValidationResult.INVALID_VERIFICATION_CODE:
-            configurator.notify_errors(
-                _CONFIGURING[DOMAIN], "Invalid verification code"
-            )
-        elif result == ValidationResult.VALIDATED:
-            setup_august(hass, config, api, authenticator, token_refresh_lock)
-
-    if DOMAIN not in _CONFIGURING:
-        authenticator.send_verification_code()
-
-    conf = config[DOMAIN]
-    username = conf.get(CONF_USERNAME)
-    login_method = conf.get(CONF_LOGIN_METHOD)
-
-    _CONFIGURING[DOMAIN] = configurator.request_config(
-        NOTIFICATION_TITLE,
-        august_configuration_callback,
-        description="Please check your {} ({}) and enter the verification "
-        "code below".format(login_method, username),
-        submit_caption="Verify",
-        fields=[
-            {"id": "verification_code", "name": "Verification code", "type": "string"}
-        ],
-    )
-
-
-def setup_august(hass, config, api, authenticator, token_refresh_lock):
+def setup_august(hass, config_entry, api, authenticator, token_refresh_lock):
     """Set up the August component."""
 
     authentication = None
@@ -127,31 +129,58 @@ def setup_august(hass, config, api, authenticator, token_refresh_lock):
     state = authentication.state
 
     if state == AuthenticationState.AUTHENTICATED:
-        if DOMAIN in _CONFIGURING:
-            hass.components.configurator.request_done(_CONFIGURING.pop(DOMAIN))
+        # if DOMAIN in _CONFIGURING:
+        #    hass.components.configurator.request_done(_CONFIGURING.pop(DOMAIN))
 
-        hass.data[DATA_AUGUST] = AugustData(
+        hass.data[DATA_AUGUST][config_entry] = AugustData(
             hass, api, authentication, authenticator, token_refresh_lock
         )
 
-        for component in AUGUST_COMPONENTS:
-            discovery.load_platform(hass, component, DOMAIN, {}, config)
+        # for component in PLATFORMS:
+        #    discovery.load_platform(hass, component, DOMAIN, {}, config)
 
         return True
     if state == AuthenticationState.BAD_PASSWORD:
         _LOGGER.error("Invalid password provided")
         return False
     if state == AuthenticationState.REQUIRES_VALIDATION:
-        request_configuration(hass, config, api, authenticator, token_refresh_lock)
-        return True
+        # request_configuration(hass, config, api, authenticator, token_refresh_lock)
+        return False
 
     return False
 
 
-async def async_setup(hass, config):
+async def async_setup(hass: HomeAssistant, config: dict):
     """Set up the August component."""
 
-    conf = config[DOMAIN]
+    conf = config.get(DOMAIN)
+
+    if not conf:
+        return True
+
+    hass.async_create_task(
+        hass.config_entries.flow.async_init(
+            DOMAIN,
+            context={"source": SOURCE_IMPORT},
+            data={
+                CONF_LOGIN_METHOD: conf.get(CONF_LOGIN_METHOD),
+                CONF_USERNAME: conf.get(CONF_USERNAME),
+                CONF_PASSWORD: conf.get(CONF_PASSWORD),
+                CONF_INSTALL_ID: conf.get(CONF_INSTALL_ID),
+                "access_token_cache_file": AUGUST_CONFIG_FILE,
+            },
+        )
+    )
+    hass.data.setdefault(DOMAIN, {})
+    return True
+
+
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
+    """Set up August from a config entry."""
+
+    hass.data.setdefault(DOMAIN, {})
+    conf = entry.data
+
     api_http_session = None
     try:
         api_http_session = Session()
@@ -166,7 +195,7 @@ async def async_setup(hass, config):
         conf.get(CONF_USERNAME),
         conf.get(CONF_PASSWORD),
         install_id=conf.get(CONF_INSTALL_ID),
-        access_token_cache_file=hass.config.path(AUGUST_CONFIG_FILE),
+        access_token_cache_file=hass.config.path(conf.get("access_token_cache_file")),
     )
 
     def close_http_session(event):
@@ -185,9 +214,34 @@ async def async_setup(hass, config):
 
     token_refresh_lock = asyncio.Lock()
 
+    # TODO Store an API object for your platforms to access
+    # hass.data[DOMAIN][entry.entry_id] = MyApi(...)
     return await hass.async_add_executor_job(
-        setup_august, hass, config, api, authenticator, token_refresh_lock
+        setup_august, hass, entry.entry_id, api, authenticator, token_refresh_lock,
     )
+
+    for component in PLATFORMS:
+        hass.async_create_task(
+            hass.config_entries.async_forward_entry_setup(entry, component)
+        )
+
+    return True
+
+
+async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
+    """Unload a config entry."""
+    unload_ok = all(
+        await asyncio.gather(
+            *[
+                hass.config_entries.async_forward_entry_unload(entry, component)
+                for component in PLATFORMS
+            ]
+        )
+    )
+    if unload_ok:
+        hass.data[DOMAIN].pop(entry.entry_id)
+
+    return unload_ok
 
 
 class AugustData:

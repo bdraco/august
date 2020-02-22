@@ -37,9 +37,9 @@ SENSOR_TYPES_DOORBELL = {
 }
 
 
-async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
+async def async_setup_entry(hass, config_entry, async_add_entities):
     """Set up the August sensors."""
-    data = hass.data[DATA_AUGUST]
+    data = hass.data[DATA_AUGUST][config_entry.entry_id]
     devices = []
 
     for doorbell in data.doorbells:
