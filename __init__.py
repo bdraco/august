@@ -30,7 +30,7 @@ CONF_LOGIN_METHOD = "login_method"
 CONF_INSTALL_ID = "install_id"
 
 NOTIFICATION_ID = "august_notification"
-NOTIFICATION_TITLE = "August Setup"
+NOTIFICATION_TITLE = "August"
 
 AUGUST_CONFIG_FILE = ".august.conf"
 
@@ -74,6 +74,7 @@ def request_configuration(
     hass, config_entry, api, authenticator, token_refresh_lock, api_http_session
 ):
   configurator = hass.components.configurator
+  entry_id = config_entry.entry_id
   def august_configuration_validation_callback(data):
      result = authenticator.validate_verification_code(data.get("verification_code"))
 
@@ -84,12 +85,16 @@ def request_configuration(
      elif result == ValidationResult.VALIDATED:
       setup_august(hass, config_entry, api, authenticator, token_refresh_lock, api_http_session)
 
+  _LOGGER.error("Access token is no longer valid.")
   if entry_id not in _CONFIGURING:
     authenticator.send_verification_code()
 
-  _LOGGER.error("Access token is no longer valid.")
+  entry_data = config_entry.data
+  login_method = entry_data.get(CONF_LOGIN_METHOD)
+  username = entry_data.get(CONF_USERNAME)
+
   _CONFIGURING[entry_id] = configurator.request_config(
-      NOTIFICATION_TITLE + "(" + username + ")",
+      NOTIFICATION_TITLE + " (" + username + ")",
       august_configuration_validation_callback,
       description="August must be re-verified. Please check your {} ({}) and enter the verification "
       "code below".format(login_method, username),
@@ -104,8 +109,6 @@ def setup_august(
     hass, config_entry, api, authenticator, token_refresh_lock, api_http_session
 ):
     """Set up the August component."""
-    entry_id = config_entry.entry_id
-    entry_data = config_entry.data
     authentication = None
     try:
         authentication = authenticator.authenticate()
@@ -113,11 +116,9 @@ def setup_august(
         _LOGGER.error("Unable to connect to August service: %s", str(ex))
 
     state = authentication.state
-    login_method = entry_data.get(CONF_LOGIN_METHOD)
-    username = entry_data.get(CONF_USERNAME)
 
     if state == AuthenticationState.AUTHENTICATED:
-        hass.data[DOMAIN][entry_id] = AugustData(
+        hass.data[DOMAIN][config_entry.entry_id] = AugustData(
             hass,
             api,
             authentication,
@@ -129,10 +130,8 @@ def setup_august(
 
     if state == AuthenticationState.BAD_PASSWORD:
         _LOGGER.error("Password is no longer valid. Please set up August again")
-        return False
     if state == AuthenticationState.REQUIRES_VALIDATION:
         request_configuration(hass, config_entry, api, authenticator, token_refresh_lock, api_http_session)
-      return False
 
     return False
 
