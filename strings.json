@@ -9,11 +9,12 @@
       "step" : {
          "user" : {
             "title" : "Setup an August account",
+			"description": "If the Login Method is 'email', Username is the email address. If the Login Method is 'phone', Username is the phone number in the format '+NNNNNNNNN'.",
             "data" : {
                "login_method" : "Login Method",
                "timeout" : "Timeout (seconds)",
                "password" : "Password",
-               "username" : "Username. If the Login Method is 'email', this is the email address. If the Login Method is 'phone', this is the phone number in the format '+NNNNNNNNN'"
+               "username" : "Username",
             }
          },
          "validation" : {
