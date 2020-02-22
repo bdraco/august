@@ -123,7 +123,7 @@ async def validate_input(hass: core.HomeAssistant, data):
     }
 
 
-class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+class AugustConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for August."""
 
     VERSION = 1
@@ -169,9 +169,6 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_import(self, user_input):
         """Handle import."""
-        if self._async_current_entries():
-            return self.async_abort(reason="already_configured")
-
         return await self.async_step_user(user_input)
 
 
