@@ -229,7 +229,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
         )
     )
 
-    hass.data[DOMAIN].close_http_session()
+    hass.data[DOMAIN][entry.entry_id].close_http_session()
 
     if unload_ok:
         hass.data[DOMAIN].pop(entry.entry_id)

@@ -29,7 +29,9 @@ async def _async_retrieve_linked_keypad_battery_state(detail):
 
     battery_level = detail.keypad.battery_level
 
-    if battery_level.lower() == "high":
+    _LOGGER.debug("keypad battery level: %s %s", battery_level, battery_level.lower())
+
+    if battery_level.lower() == "full":
         return 100
     if battery_level.lower() == "medium":
         return 60
@@ -67,22 +69,22 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     devices = []
 
     batteries = {
-        "doorbell_battery": set(),
-        "lock_battery": set(),
-        "keypad_battery": set(),
+        "device_battery": [],
+        "linked_keypad_battery": [],
     }
     for device in data.doorbells:
-        batteries["device_battery"].add(device)
+        batteries["device_battery"].append(device)
     for device in data.locks:
-        batteries["device_battery"].add(device)
-        batteries["linked_keypad_battery"].add(device)
+        batteries["device_battery"].append(device)
+        batteries["linked_keypad_battery"].append(device)
 
     for sensor_type in SENSOR_TYPES_BATTERY:
         for device in batteries[sensor_type]:
             async_state_provider = SENSOR_TYPES_BATTERY[sensor_type][
                 SENSOR_STATE_PROVIDER
             ]
-            state = await async_state_provider(data, device)
+            detail = await async_detail_provider(data, device)
+            state = await async_state_provider(detail)
             if state is None:
                 _LOGGER.debug(
                     "Not adding battery sensor class %s for %s %s because it is not present",
