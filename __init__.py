@@ -7,6 +7,8 @@ import logging
 # , ValidationResult
 from august.api import Api, AugustApiHTTPError
 from august.authenticator import AuthenticationState, Authenticator
+from august.doorbell import Doorbell
+from august.lock import Lock
 from requests import RequestException, Session
 import voluptuous as vol
 
@@ -489,10 +491,9 @@ def find_linked_doorsense_unique_id(device_id):
 
 
 async def async_detail_provider(data, device):
-   if isinstance(device,Lock):
-       return await data.async_get_lock_detail(device.device_id)
-   if isinstance(device,Doorbell):
-       return await data.async_get_doorbell_detail(device.device_id)
-   except ValueError
-
-
+    """Return the py-august detail for a device."""
+    if isinstance(device, Lock):
+        return await data.async_get_lock_detail(device.device_id)
+    if isinstance(device, Doorbell):
+        return await data.async_get_doorbell_detail(device.device_id)
+    raise ValueError

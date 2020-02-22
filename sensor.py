@@ -1,9 +1,6 @@
 """Support for August sensors."""
 import logging
 
-from august.lock import Lock
-from august.doorbell import Doorbell
-
 from homeassistant.components.sensor import DEVICE_CLASS_BATTERY
 from homeassistant.helpers.entity import Entity
 
@@ -21,6 +18,7 @@ async def _async_retrieve_device_battery_state(detail):
 
     return detail.battery_level
 
+
 async def _async_retrieve_linked_keypad_battery_state(detail):
     """Get the latest state of the sensor."""
     if detail is None:
@@ -33,9 +31,9 @@ async def _async_retrieve_linked_keypad_battery_state(detail):
 
     if battery_level.lower() == "high":
         return 100
-    if battery_level.lower() == "medium"
+    if battery_level.lower() == "medium":
         return 60
-    if battery_level.lower() == "low"
+    if battery_level.lower() == "low":
         return 10
 
     return 0
@@ -47,7 +45,7 @@ SENSOR_STATE_PROVIDER = 2
 SENSOR_UNIT_OF_MEASUREMENT = 3
 
 # sensor_type: [name, device_class, async_state_provider, unit_of_measurement]
-SENSOR_TYPES_DOORBELL = {
+SENSOR_TYPES_BATTERY = {
     "device_battery": [
         "Battery",
         DEVICE_CLASS_BATTERY,
@@ -62,22 +60,22 @@ SENSOR_TYPES_DOORBELL = {
     ],
 }
 
+
 async def async_setup_entry(hass, config_entry, async_add_entities):
     """Set up the August sensors."""
     data = hass.data[DOMAIN][config_entry.entry_id]
     devices = []
-    
+
     batteries = {
-       "doorbell_battery": set(),
-       "lock_battery": set(),
-       "keypad_battery": set(),
+        "doorbell_battery": set(),
+        "lock_battery": set(),
+        "keypad_battery": set(),
     }
     for device in data.doorbells:
         batteries["device_battery"].add(device)
-   for device in data.locks:
+    for device in data.locks:
         batteries["device_battery"].add(device)
         batteries["linked_keypad_battery"].add(device)
-        
 
     for sensor_type in SENSOR_TYPES_BATTERY:
         for device in batteries[sensor_type]:
@@ -90,14 +88,14 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
                     "Not adding battery sensor class %s for %s %s because it is not present",
                     SENSOR_TYPES_BATTERY[sensor_type][SENSOR_DEVICE_CLASS],
                     device.device_name,
-                    SENSOR_TYPES_BATTERY[sensor_type][SENSOR_NAME]
+                    SENSOR_TYPES_BATTERY[sensor_type][SENSOR_NAME],
                 )
             else:
                 _LOGGER.debug(
                     "Adding battery sensor class %s for %s %s",
                     SENSOR_TYPES_BATTERY[sensor_type][SENSOR_DEVICE_CLASS],
                     device.device_name,
-		    SENSOR_TYPES_BATTERY[sensor_type][SENSOR_NAME]
+                    SENSOR_TYPES_BATTERY[sensor_type][SENSOR_NAME],
                 )
                 devices.append(AugustBatterySensor(data, sensor_type, device))
 
@@ -174,4 +172,3 @@ class AugustBatterySensor(Entity):
             "model": self._model,
             "sw_version": self._firmware_version,
         }
-
