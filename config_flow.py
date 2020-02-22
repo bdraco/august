@@ -86,28 +86,17 @@ async def validate_input(hass: core.HomeAssistant, data):
     if state == AuthenticationState.BAD_PASSWORD:
         raise InvalidAuth
 
-    # if state == AuthenticationState.AUTHENTICATED:
-    #    return True
-    #
     if state == AuthenticationState.REQUIRES_VALIDATION:
-        authenticator.send_verification_code()
-        raise RequireValidation
-    #    # ok ?
+        code = data.get("code")
+        result = None
 
-    # if DOMAIN not in _CONFIGURING:
-
-    # _CONFIGURING[DOMAIN] = configurator.request_config(
-    #    NOTIFICATION_TITLE,
-    #    august_configuration_callback,
-    #    description="Please check your {} ({}) and enter the verification "
-    #    "code below".format(login_method, username),
-    #    submit_caption="Verify",
-    #    fields=[
-    #        {"id": "verification_code", "name": "Verification code", "type": "string"}
-    #    ],
-    # )
-
-    # Return info that you want to store in the config entry.
+        if code:
+            result = await hass.async_add_executor_job(authenticator.validate_verification_code,code)
+    
+        if result != ValidationResult.VALIDATED:
+            authenticator.send_verification_code()
+            raise RequireValidation
+    
     return {
         "title": username,
         "data": {
