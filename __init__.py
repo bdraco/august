@@ -155,6 +155,8 @@ async def async_setup(hass: HomeAssistant, config: dict):
     if not conf:
         return True
 
+    hass.data.setdefault(DOMAIN, {})
+
     hass.async_create_task(
         hass.config_entries.flow.async_init(
             DOMAIN,
@@ -168,7 +170,6 @@ async def async_setup(hass: HomeAssistant, config: dict):
             },
         )
     )
-    hass.data.setdefault(DOMAIN, {})
     return True
 
 

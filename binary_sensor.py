@@ -13,7 +13,7 @@ from homeassistant.components.binary_sensor import (
     BinarySensorDevice,
 )
 
-from . import DOMAIN, find_linked_doorsense_unique_id, DEFAULT_NAME
+from . import DEFAULT_NAME, DOMAIN, find_linked_doorsense_unique_id
 
 _LOGGER = logging.getLogger(__name__)
 

@@ -4,7 +4,12 @@ import logging
 from homeassistant.components.sensor import DEVICE_CLASS_BATTERY
 from homeassistant.helpers.entity import Entity
 
-from . import DOMAIN, MIN_TIME_BETWEEN_DETAIL_UPDATES, async_detail_provider, DEFAULT_NAME
+from . import (
+    DEFAULT_NAME,
+    DOMAIN,
+    MIN_TIME_BETWEEN_DETAIL_UPDATES,
+    async_detail_provider,
+)
 
 _LOGGER = logging.getLogger(__name__)
 

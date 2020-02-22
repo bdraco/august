@@ -129,10 +129,20 @@ class AugustConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     VERSION = 1
     CONNECTION_CLASS = config_entries.CONN_CLASS_CLOUD_POLL
 
+    def _username_in_configuration_exists(self, user_input) -> bool:
+        """Return True if username exists in configuration."""
+        username = user_input[CONF_USERNAME]
+        for entry in self.hass.config_entries.async_entries(DOMAIN):
+            if entry.data[CONF_USERNAME] == username:
+                return True
+        return False
+
     async def async_step_user(self, user_input=None):
         """Handle the initial step."""
         errors = {}
         if user_input is not None:
+            if self._username_in_configuration_exists(user_input):
+                return self.async_abort(reason="already_configured")
             try:
                 info = await validate_input(self.hass, user_input)
                 await self.async_set_unique_id(info["data"][CONF_USERNAME])
@@ -169,6 +179,9 @@ class AugustConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_import(self, user_input):
         """Handle import."""
+
+        if self._username_in_configuration_exists(user_input):
+            return self.async_abort(reason="already_configured")
         return await self.async_step_user(user_input)
 
 
