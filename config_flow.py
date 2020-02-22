@@ -8,7 +8,6 @@ from requests import RequestException, Session
 import voluptuous as vol
 
 from homeassistant import config_entries, core, exceptions
-import homeassistant.helpers.config_validation as cv
 
 from . import (
     AUGUST_CONFIG_FILE,
@@ -32,10 +31,10 @@ LOGIN_METHODS = ["phone", "email"]
 DATA_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_LOGIN_METHOD): vol.In(LOGIN_METHODS),
-        vol.Required(CONF_USERNAME): cv.string,
-        vol.Required(CONF_PASSWORD): cv.string,
-        vol.Optional(CONF_INSTALL_ID): cv.string,
-        vol.Optional(CONF_TIMEOUT, default=DEFAULT_TIMEOUT): cv.positive_int,
+        vol.Required(CONF_USERNAME): str,
+        vol.Required(CONF_PASSWORD): str,
+        vol.Optional(CONF_INSTALL_ID): str,
+        vol.Optional(CONF_TIMEOUT, default=DEFAULT_TIMEOUT): vol.Coerce(int),
     }
 )
 
