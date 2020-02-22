@@ -4,9 +4,8 @@ from datetime import timedelta
 from functools import partial
 import logging
 
-# , ValidationResult
 from august.api import Api, AugustApiHTTPError
-from august.authenticator import AuthenticationState, Authenticator
+from august.authenticator import AuthenticationState, Authenticator, ValidationResult
 from august.doorbell import Doorbell
 from august.lock import Lock
 from requests import RequestException, Session
@@ -71,6 +70,36 @@ CONFIG_SCHEMA = vol.Schema(
 
 PLATFORMS = ["camera", "binary_sensor", "sensor", "lock"]
 
+def request_configuration(
+    hass, config_entry, api, authenticator, token_refresh_lock, api_http_session
+):
+  configurator = hass.components.configurator
+  def august_configuration_validation_callback(data):
+     result = authenticator.validate_verification_code(data.get("verification_code"))
+
+     if result == ValidationResult.INVALID_VERIFICATION_CODE:
+      configurator.notify_errors(
+        _CONFIGURING[entry_id], "Invalid verification code"
+      )
+     elif result == ValidationResult.VALIDATED:
+      setup_august(hass, config_entry, api, authenticator, token_refresh_lock, api_http_session)
+
+  if entry_id not in _CONFIGURING:
+    authenticator.send_verification_code()
+
+  _LOGGER.error("Access token is no longer valid.")
+  _CONFIGURING[entry_id] = configurator.request_config(
+      NOTIFICATION_TITLE + "(" + username + ")",
+      august_configuration_validation_callback,
+      description="August must be re-verified. Please check your {} ({}) and enter the verification "
+      "code below".format(login_method, username),
+      submit_caption="Verify",
+      fields=[
+        {"id": "verification_code", "name": "Verification code", "type": "string"}
+      ],
+  )
+  return
+
 def setup_august(
     hass, config_entry, api, authenticator, token_refresh_lock, api_http_session
 ):
@@ -102,31 +131,8 @@ def setup_august(
         _LOGGER.error("Password is no longer valid. Please set up August again")
         return False
     if state == AuthenticationState.REQUIRES_VALIDATION:
-        def august_configuration_validation_callback(data):
-	    result = authenticator.validate_verification_code(data.get("verification_code"))
-
-	    if result == ValidationResult.INVALID_VERIFICATION_CODE:
-		configurator.notify_errors(
-		    _CONFIGURING[entry_id], "Invalid verification code"
-		)
-	    elif result == ValidationResult.VALIDATED:
-		setup_august(hass, config_entry, api, authenticator, token_refresh_lock, api_http_session)
-
-	if entry_id not in _CONFIGURING:
-	    authenticator.send_verification_code()
-
-        _LOGGER.error("Access token is no longer valid.")
-        _CONFIGURING[entry_id] = configurator.request_config(
-	    NOTIFICATION_TITLE,
-	    august_configuration_validation_callback,
-	    description="Please check your {} ({}) and enter the verification "
-	    "code below".format(login_method, username),
-	    submit_caption="Verify",
-	    fields=[
-		{"id": "verification_code", "name": "Verification code", "type": "string"}
-	    ],
-	)
-        return False
+        request_configuration(hass, config_entry, api, authenticator, token_refresh_lock, api_http_session)
+      return False
 
     return False
 
