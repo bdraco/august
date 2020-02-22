@@ -66,6 +66,15 @@ async def validate_input(hass: core.HomeAssistant, data):
         install_id=data.get(CONF_INSTALL_ID),
         access_token_cache_file=hass.config.path(access_token_cache_file),
     )
+    
+    code = data.get("code")
+
+    if code is not None:
+        result = await hass.async_add_executor_job(
+            authenticator.validate_verification_code, code
+        )
+        _LOGGER.debug("Verification code validation: %s", result)
+        # If it fails we fall though and get another one
 
     authentication = None
     try:
@@ -82,30 +91,16 @@ async def validate_input(hass: core.HomeAssistant, data):
         raise InvalidAuth
 
     if state == AuthenticationState.REQUIRES_VALIDATION:
-        code = data.get("code")
-        result = None
-
-        if code:
-            result = await hass.async_add_executor_job(
-                authenticator.validate_verification_code, code
-            )
-            _LOGGER.debug("Verification code validation: %s", result)
-            if result != ValidationResult.VALIDATED:
-                raise RequireValidation
-
-            # we have to call authenticate again to write the token
-            authentication = await hass.async_add_executor_job(
-                authenticator.authenticate
-            )
-        else:
+        if code is None:
             _LOGGER.debug(
                 "Requesting new verification code for %s via %s",
                 data.get(CONF_USERNAME),
                 data.get(CONF_LOGIN_METHOD),
             )
             await hass.async_add_executor_job(authenticator.send_verification_code)
-            await _async_close_http_session(hass, api_http_session)
-            raise RequireValidation
+
+        await _async_close_http_session(hass, api_http_session)
+        raise RequireValidation
 
     return {
         "title": username,

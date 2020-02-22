@@ -85,6 +85,7 @@ async def async_request_configuration(
         )
 
         if result == ValidationResult.INVALID_VERIFICATION_CODE:
+            await hass.async_add_executor_job(authenticator.send_verification_code)
             configurator.async_notify_errors(
                 _CONFIGURING[entry_id],
                 "Invalid verification code, please make sure you are using the latest code and try again.",
@@ -98,8 +99,8 @@ async def async_request_configuration(
 
     _LOGGER.error("Access token is no longer valid.")
     if entry_id not in _CONFIGURING:
-        await hass.async_add_executor_job(authenticator.send_verification_code)
 
+        await hass.async_add_executor_job(authenticator.send_verification_code)
     entry_data = config_entry.data
     login_method = entry_data.get(CONF_LOGIN_METHOD)
     username = entry_data.get(CONF_USERNAME)
