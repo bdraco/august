@@ -100,7 +100,7 @@ async def validate_input(hass: core.HomeAssistant, data):
                 data.get(CONF_USERNAME),
                 data.get(CONF_LOGIN_METHOD),
             )
-            authenticator.send_verification_code()
+            await hass.async_add_executor_job(authenticator.send_verification_code)
             await _async_close_http_session(hass, api_http_session)
             raise RequireValidation
 

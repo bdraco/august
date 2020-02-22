@@ -71,41 +71,41 @@ CONFIG_SCHEMA = vol.Schema(
 PLATFORMS = ["camera", "binary_sensor", "sensor", "lock"]
 
 
-def request_configuration(
-    hass, config_entry, api, authenticator, token_refresh_lock, api_http_session
+async def async_request_configuration(
+    hass, config_entry, api, authenticator, api_http_session
 ):
     """Request a new verification code from the user."""
     configurator = hass.components.configurator
     entry_id = config_entry.entry_id
 
-    def august_configuration_validation_callback(data):
-        result = authenticator.validate_verification_code(data.get("verification_code"))
+    async def async_august_configuration_validation_callback(data):
+        code = data.get("verification_code")
+        result = await hass.async_add_executor_job(
+            authenticator.validate_verification_code, code
+        )
 
         if result == ValidationResult.INVALID_VERIFICATION_CODE:
             configurator.notify_errors(
                 _CONFIGURING[entry_id], "Invalid verification code"
             )
         elif result == ValidationResult.VALIDATED:
-            setup_august(
-                hass,
-                config_entry,
-                api,
-                authenticator,
-                token_refresh_lock,
-                api_http_session,
+            await async_setup_august(
+                hass, config_entry, api, authenticator, api_http_session,
             )
+
+        return
 
     _LOGGER.error("Access token is no longer valid.")
     if entry_id not in _CONFIGURING:
-        authenticator.send_verification_code()
+        await hass.async_add_executor_job(authenticator.send_verification_code)
 
     entry_data = config_entry.data
     login_method = entry_data.get(CONF_LOGIN_METHOD)
     username = entry_data.get(CONF_USERNAME)
 
-    _CONFIGURING[entry_id] = configurator.request_config(
+    _CONFIGURING[entry_id] = configurator.async_request_config(
         NOTIFICATION_TITLE + " (" + username + ")",
-        august_configuration_validation_callback,
+        async_august_configuration_validation_callback,
         description="August must be re-verified. Please check your {} ({}) and enter the verification "
         "code below".format(login_method, username),
         submit_caption="Verify",
@@ -116,44 +116,53 @@ def request_configuration(
     return
 
 
-def setup_august(
+async def async_setup_august(
     hass, config_entry, api, authenticator, token_refresh_lock, api_http_session
 ):
     """Set up the August component."""
     authentication = None
     try:
-        authentication = authenticator.authenticate()
+        authentication = await hass.async_add_executor_job(authenticator.authenticate)
     except RequestException as ex:
         _LOGGER.error("Unable to connect to August service: %s", str(ex))
 
     state = authentication.state
-    entry_id = config_entry.entry_id
-
-    if state == AuthenticationState.AUTHENTICATED:
-        # We still use the configurator to get a new 2fa code
-        # when needed since config_flow doesn't have a way
-        # to re-request if it expires
-        if entry_id in _CONFIGURING:
-            hass.components.configurator.request_done(_CONFIGURING.pop(entry_id))
-
-        hass.data[DOMAIN][config_entry.entry_id] = AugustData(
-            hass,
-            api,
-            authentication,
-            authenticator,
-            token_refresh_lock,
-            api_http_session,
-        )
-        return True
 
     if state == AuthenticationState.BAD_PASSWORD:
         _LOGGER.error("Password is no longer valid. Please set up August again")
     if state == AuthenticationState.REQUIRES_VALIDATION:
-        request_configuration(
-            hass, config_entry, api, authenticator, token_refresh_lock, api_http_session
+        await async_request_configuration(
+            hass, config_entry, api, authenticator, api_http_session
         )
 
-    return False
+    if state != AuthenticationState.AUTHENTICATED:
+        raise "Unknown authentication state: " + str(state)
+
+    entry_id = config_entry.entry_id
+    # We still use the configurator to get a new 2fa code
+    # when needed since config_flow doesn't have a way
+    # to re-request if it expires
+    if entry_id in _CONFIGURING:
+        hass.components.configurator.request_done(_CONFIGURING.pop(entry_id))
+
+    token_refresh_lock = asyncio.Lock()
+
+    hass.data[DOMAIN][config_entry.entry_id] = await hass.async_add_executor_job(
+        AugustData,
+        hass,
+        api,
+        authentication,
+        authenticator,
+        token_refresh_lock,
+        api_http_session,
+    )
+
+    for component in PLATFORMS:
+        hass.async_create_task(
+            hass.config_entries.async_forward_entry_setup(config_entry, component)
+        )
+
+    return True
 
 
 async def async_setup(hass: HomeAssistant, config: dict):
@@ -207,27 +216,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         ),
     )
 
-    token_refresh_lock = asyncio.Lock()
-
-    setup_ok = await hass.async_add_executor_job(
-        setup_august,
-        hass,
-        entry,
-        api,
-        authenticator,
-        token_refresh_lock,
-        api_http_session,
-    )
-
-    if not setup_ok:
-        return False
-
-    for component in PLATFORMS:
-        hass.async_create_task(
-            hass.config_entries.async_forward_entry_setup(entry, component)
-        )
-
-    return True
+    return await async_setup_august(hass, entry, api, authenticator, api_http_session)
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
