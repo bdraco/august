@@ -74,9 +74,6 @@ async def validate_input(hass: core.HomeAssistant, data):
             authenticator.validate_verification_code, code
         )
         _LOGGER.debug("Verification code validation: %s", result)
-        # If this fails we want them to try again as calling
-        # authenticator.authenticate will make the code invalid
-        # so we raise here for retry
         raise RequireValidation
 
     authentication = None
