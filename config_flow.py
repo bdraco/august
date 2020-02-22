@@ -36,6 +36,11 @@ DATA_SCHEMA = vol.Schema(
     }
 )
 
+async def _async_close_http_session(http_session):
+    try:
+        await hass.async_add_executor_job(http_session.close)
+    except RequestException:
+        pass
 
 async def validate_input(hass: core.HomeAssistant, data):
     """Validate the user input allows us to connect.
@@ -65,11 +70,13 @@ async def validate_input(hass: core.HomeAssistant, data):
         authentication = await hass.async_add_executor_job(authenticator.authenticate)
     except RequestException as ex:
         _LOGGER.error("Unable to connect to August service: %s", str(ex))
+        await _async_close_http_session(api_http_session)
         raise CannotConnect
 
     state = authentication.state
 
     if state == AuthenticationState.BAD_PASSWORD:
+        await _async_close_http_session(api_http_session)
         raise InvalidAuth
 
     if state == AuthenticationState.REQUIRES_VALIDATION:
@@ -86,6 +93,7 @@ async def validate_input(hass: core.HomeAssistant, data):
         if result != ValidationResult.VALIDATED:
             _LOGGER.debug("Requesting new verification code for %s via %s", data.get(CONF_USERNAME), data.get(CONF_LOGIN_METHOD))
             authenticator.send_verification_code()
+            await _async_close_http_session(api_http_session)
             raise RequireValidation
     
     return {
