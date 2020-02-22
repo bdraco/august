@@ -125,6 +125,8 @@ class AugustDoorBinarySensor(AugustBinarySensor):
         self._door = door
         self._state = None
         self._available = False
+        self._model = None
+        self._firmware_version = None
 
     @property
     def device_class(self):
@@ -150,6 +152,7 @@ class AugustDoorBinarySensor(AugustBinarySensor):
         self._available = False
         if detail is not None:
             lock_door_state = detail.door_state
+            self._firmware_version = detail.firmware_version
             self._available = detail.bridge_is_online
 
         self._state = lock_door_state == LockDoorStatus.OPEN
@@ -158,6 +161,17 @@ class AugustDoorBinarySensor(AugustBinarySensor):
     def unique_id(self) -> str:
         """Get the unique of the door open binary sensor."""
         return find_linked_doorsense_unique_id(self._door.device_id)
+
+    @property
+    def device_info(self):
+        """Return the device_info of the device."""
+        return {
+            "identifiers": {(DOMAIN, self._door.device_id)},
+            "name": self._door.device_name,
+            "manufacturer": "August",
+            "model": self._model,
+            "sw_version": self._firmware_version,
+        }
 
 
 class AugustDoorbellBinarySensor(AugustBinarySensor):
@@ -170,6 +184,8 @@ class AugustDoorbellBinarySensor(AugustBinarySensor):
         self._doorbell = doorbell
         self._state = None
         self._available = False
+        self._model = None
+        self._firmware_version = None
 
     @property
     def device_class(self):
@@ -201,6 +217,9 @@ class AugustDoorbellBinarySensor(AugustBinarySensor):
                 detail.is_online or detail.is_standby
             )
 
+        if detail is not None:
+            self._firmware_version = detail.firmware_version
+
     @property
     def unique_id(self) -> str:
         """Get the unique id of the doorbell sensor."""
@@ -208,3 +227,14 @@ class AugustDoorbellBinarySensor(AugustBinarySensor):
             self._doorbell.device_id,
             SENSOR_TYPES_DOORBELL[self._sensor_type][SENSOR_NAME].lower(),
         )
+
+    @property
+    def device_info(self):
+        """Return the device_info of the device."""
+        return {
+            "identifiers": {(DOMAIN, self._doorbell.device_id)},
+            "name": self._doorbell.device_name,
+            "manufacturer": "August",
+            "model": self._model,
+            "sw_version": self._firmware_version,
+        }

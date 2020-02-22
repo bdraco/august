@@ -34,6 +34,8 @@ class AugustCamera(Camera):
         self._timeout = timeout
         self._image_url = None
         self._image_content = None
+        self._model = None
+        self._firmware_version = None
 
     @property
     def name(self):
@@ -69,6 +71,9 @@ class AugustCamera(Camera):
             self._doorbell.device_id, ActivityType.DOORBELL_MOTION
         )
 
+        if self._doorbell_detail is None:
+            return None
+
         if doorbell_activity is not None:
             update_doorbell_image_from_activity(
                 self._doorbell_detail, doorbell_activity
@@ -80,6 +85,8 @@ class AugustCamera(Camera):
                 self._camera_image
             )
 
+        self._firmware_version = self._doorbell_detail.firmware_version
+
         return self._image_content
 
     def _camera_image(self):
@@ -90,3 +97,14 @@ class AugustCamera(Camera):
     def unique_id(self) -> str:
         """Get the unique id of the camera."""
         return f"{self._doorbell.device_id:s}_camera"
+
+    @property
+    def device_info(self):
+        """Return the device_info of the device."""
+        return {
+            "identifiers": {(DOMAIN, self._doorbell.device_id)},
+            "name": self._doorbell.device_name,
+            "manufacturer": "August",
+            "model": self._model,
+            "sw_version": self._firmware_version,
+        }

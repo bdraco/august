@@ -39,6 +39,8 @@ class AugustLock(LockDevice):
         self._lock_detail = None
         self._changed_by = None
         self._available = False
+        self._firmware_version = None
+        self._model = None
 
     async def async_lock(self, **kwargs):
         """Lock the device."""
@@ -99,7 +101,11 @@ class AugustLock(LockDevice):
 
         if lock_activity is not None:
             self._changed_by = lock_activity.operated_by
-            update_lock_detail_from_activity(self._lock_detail, lock_activity)
+            if self._lock_detail is not None:
+                update_lock_detail_from_activity(self._lock_detail, lock_activity)
+
+        if self._lock_detail is not None:
+            self._firmware_version = self._lock_detail.firmware_version
 
         self._update_lock_status_from_detail()
 
@@ -137,6 +143,17 @@ class AugustLock(LockDevice):
             attributes["keypad_battery_level"] = self._lock_detail.keypad.battery_level
 
         return attributes
+
+    @property
+    def device_info(self):
+        """Return the device_info of the device."""
+        return {
+            "identifiers": {(DOMAIN, self._lock.device_id)},
+            "name": self._lock.device_name,
+            "manufacturer": "August",
+            "model": self._model,
+            "sw_version": self._firmware_version,
+        }
 
     @property
     def unique_id(self) -> str:

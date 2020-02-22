@@ -75,6 +75,8 @@ class AugustDoorbellSensor(Entity):
         self._doorbell = doorbell
         self._state = None
         self._available = False
+        self._model = None
+        self._firmware_version = None
 
     @property
     def available(self):
@@ -111,6 +113,9 @@ class AugustDoorbellSensor(Entity):
         ]
         self._state = await async_state_provider(self._data, self._doorbell)
         self._available = self._state is not None
+        detail = await self._data.async_get_doorbell_detail(self._doorbell.device_id)
+        if detail is not None:
+            self._firmware_version = detail.firmware_version
 
     @property
     def unique_id(self) -> str:
@@ -119,3 +124,14 @@ class AugustDoorbellSensor(Entity):
             self._doorbell.device_id,
             SENSOR_TYPES_DOORBELL[self._sensor_type][SENSOR_NAME].lower(),
         )
+
+    @property
+    def device_info(self):
+        """Return the device_info of the device."""
+        return {
+            "identifiers": {(DOMAIN, self._doorbell.device_id)},
+            "name": self._doorbell.device_name,
+            "manufacturer": "August",
+            "model": self._model,
+            "sw_version": self._firmware_version,
+        }
