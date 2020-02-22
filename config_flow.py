@@ -3,9 +3,17 @@ import logging
 
 import voluptuous as vol
 
+from august.api import Api, AugustApiHTTPError
+from august.authenticator import AuthenticationState, Authenticator, ValidationResult
+from requests import RequestException, Session
+
 from homeassistant import config_entries, core, exceptions
 
-from .const import DOMAIN  # pylint:disable=unused-import
+from . import DOMAIN  # pylint:disable=unused-import
+from . import CONF_LOGIN_METHOD,CONF_USERNAME,CONF_PASSWORD,CONF_INSTALL_ID,CONF_TIMEOUT,DEFAULT_TIMEOUT,AUGUST_CONFIG_FILE
+
+import homeassistant.helpers.config_validation as cv
+
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -44,26 +52,73 @@ async def validate_input(hass: core.HomeAssistant, data):
 
     Data has the keys from DATA_SCHEMA with values provided by the user.
     """
-    # TODO validate the data can be used to set up a connection.
+    """Request configuration steps from the user."""
 
-    # If your PyPI package is not built with async, pass your methods
-    # to the executor:
-    # await hass.async_add_executor_job(
-    #     your_validate_func, data["username"], data["password"]
-    # )
+    def august_configuration_callback(data):
+        """Run when the configuration callback is called."""
 
-    hub = PlaceholderHub(data["host"])
+        result = authenticator.validate_verification_code(data.get("verification_code"))
 
-    if not await hub.authenticate(data["username"], data["password"]):
+        if result == ValidationResult.INVALID_VERIFICATION_CODE:
+            configurator.notify_errors(
+                _CONFIGURING[DOMAIN], "Invalid verification code"
+            )
+        elif result == ValidationResult.VALIDATED:
+            setup_august(hass, config, api, authenticator, token_refresh_lock)
+
+    api_http_session = Session()
+    api = Api(timeout=data.get(CONF_TIMEOUT), http_session=api_http_session)
+
+    username = data.get(CONF_USERNAME)
+    access_token_cache_file = data.get(CONF_ACCESS_TOKEN_CACHE_FILE)
+    if access_token_cache_file is None:
+        access_token_cache_file = username + "." . AUGUST_CONFIG_FILE 
+
+    authenticator = Authenticator(
+        api,
+        data.get(CONF_LOGIN_METHOD),
+        username,
+        data.get(CONF_PASSWORD),
+        install_id=data.get(CONF_INSTALL_ID),
+        access_token_cache_file=hass.config.path(access_token_cache_file),
+    )   
+
+    authentication = None
+    try:
+        authentication = await hass.async_add_executor_job(authenticator.authenticate)
+    except RequestException as ex:
+        _LOGGER.error("Unable to connect to August service: %s", str(ex))
+        raise CannotConnect
+
+    state = authentication.state
+
+    if state == AuthenticationState.BAD_PASSWORD:
         raise InvalidAuth
 
-    # If you cannot connect:
-    # throw CannotConnect
-    # If the authentication is wrong:
-    # InvalidAuth
+    #if state == AuthenticationState.AUTHENTICATED:
+    #    return True
+    #
+    #if state == AuthenticationState.REQUIRES_VALIDATION:
+    #    # ok ?
+
+
+    #if DOMAIN not in _CONFIGURING:
+    #    authenticator.send_verification_code()
+
+
+    #_CONFIGURING[DOMAIN] = configurator.request_config(
+    #    NOTIFICATION_TITLE,
+    #    august_configuration_callback,
+    #    description="Please check your {} ({}) and enter the verification "
+    #    "code below".format(login_method, username),
+    #    submit_caption="Verify",
+    #    fields=[
+    #        {"id": "verification_code", "name": "Verification code", "type": "string"}
+    #    ],
+    #)
 
     # Return info that you want to store in the config entry.
-    return {"title": "Name of the device"}
+    return {"title": username}
 
 
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -92,6 +147,12 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             step_id="user", data_schema=DATA_SCHEMA, errors=errors
         )
 
+    async def async_step_import(self, user_input):
+        """Handle import."""
+        if self._async_current_entries():
+            return self.async_abort(reason="already_configured")
+
+        return await self.async_step_user(user_input)
 
 class CannotConnect(exceptions.HomeAssistantError):
     """Error to indicate we cannot connect."""
