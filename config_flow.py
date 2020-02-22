@@ -84,13 +84,13 @@ async def validate_input(hass: core.HomeAssistant, data):
     state = authentication.state
 
     if state == AuthenticationState.BAD_PASSWORD:
-        authenticator.send_verification_code()
         raise InvalidAuth
 
     # if state == AuthenticationState.AUTHENTICATED:
     #    return True
     #
     if state == AuthenticationState.REQUIRES_VALIDATION:
+        authenticator.send_verification_code()
         raise RequireValidation
     #    # ok ?
 

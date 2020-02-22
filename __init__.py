@@ -232,6 +232,8 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
         )
     )
 
+    #FIXME: close_http_session doesn't seem to happen now
+
     if unload_ok:
         hass.data[DOMAIN][entry.entry_id].close_http_session()
         hass.data[DOMAIN].pop(entry.entry_id)
