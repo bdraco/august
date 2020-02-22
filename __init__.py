@@ -70,40 +70,51 @@ CONFIG_SCHEMA = vol.Schema(
 
 PLATFORMS = ["camera", "binary_sensor", "sensor", "lock"]
 
+
 def request_configuration(
     hass, config_entry, api, authenticator, token_refresh_lock, api_http_session
 ):
-  configurator = hass.components.configurator
-  entry_id = config_entry.entry_id
-  def august_configuration_validation_callback(data):
-     result = authenticator.validate_verification_code(data.get("verification_code"))
+    """Request a new verification code from the user."""
+    configurator = hass.components.configurator
+    entry_id = config_entry.entry_id
 
-     if result == ValidationResult.INVALID_VERIFICATION_CODE:
-      configurator.notify_errors(
-        _CONFIGURING[entry_id], "Invalid verification code"
-      )
-     elif result == ValidationResult.VALIDATED:
-      setup_august(hass, config_entry, api, authenticator, token_refresh_lock, api_http_session)
+    def august_configuration_validation_callback(data):
+        result = authenticator.validate_verification_code(data.get("verification_code"))
 
-  _LOGGER.error("Access token is no longer valid.")
-  if entry_id not in _CONFIGURING:
-    authenticator.send_verification_code()
+        if result == ValidationResult.INVALID_VERIFICATION_CODE:
+            configurator.notify_errors(
+                _CONFIGURING[entry_id], "Invalid verification code"
+            )
+        elif result == ValidationResult.VALIDATED:
+            setup_august(
+                hass,
+                config_entry,
+                api,
+                authenticator,
+                token_refresh_lock,
+                api_http_session,
+            )
 
-  entry_data = config_entry.data
-  login_method = entry_data.get(CONF_LOGIN_METHOD)
-  username = entry_data.get(CONF_USERNAME)
+    _LOGGER.error("Access token is no longer valid.")
+    if entry_id not in _CONFIGURING:
+        authenticator.send_verification_code()
 
-  _CONFIGURING[entry_id] = configurator.request_config(
-      NOTIFICATION_TITLE + " (" + username + ")",
-      august_configuration_validation_callback,
-      description="August must be re-verified. Please check your {} ({}) and enter the verification "
-      "code below".format(login_method, username),
-      submit_caption="Verify",
-      fields=[
-        {"id": "verification_code", "name": "Verification code", "type": "string"}
-      ],
-  )
-  return
+    entry_data = config_entry.data
+    login_method = entry_data.get(CONF_LOGIN_METHOD)
+    username = entry_data.get(CONF_USERNAME)
+
+    _CONFIGURING[entry_id] = configurator.request_config(
+        NOTIFICATION_TITLE + " (" + username + ")",
+        august_configuration_validation_callback,
+        description="August must be re-verified. Please check your {} ({}) and enter the verification "
+        "code below".format(login_method, username),
+        submit_caption="Verify",
+        fields=[
+            {"id": "verification_code", "name": "Verification code", "type": "string"}
+        ],
+    )
+    return
+
 
 def setup_august(
     hass, config_entry, api, authenticator, token_refresh_lock, api_http_session
@@ -116,8 +127,15 @@ def setup_august(
         _LOGGER.error("Unable to connect to August service: %s", str(ex))
 
     state = authentication.state
+    entry_id = config_entry.entry_id
 
     if state == AuthenticationState.AUTHENTICATED:
+        # We still use the configurator to get a new 2fa code
+        # when needed since config_flow doesn't have a way
+        # to re-request if it expires
+        if entry_id in _CONFIGURING:
+            hass.components.configurator.request_done(_CONFIGURING.pop(entry_id))
+
         hass.data[DOMAIN][config_entry.entry_id] = AugustData(
             hass,
             api,
@@ -131,7 +149,9 @@ def setup_august(
     if state == AuthenticationState.BAD_PASSWORD:
         _LOGGER.error("Password is no longer valid. Please set up August again")
     if state == AuthenticationState.REQUIRES_VALIDATION:
-        request_configuration(hass, config_entry, api, authenticator, token_refresh_lock, api_http_session)
+        request_configuration(
+            hass, config_entry, api, authenticator, token_refresh_lock, api_http_session
+        )
 
     return False
 
@@ -221,7 +241,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
         )
     )
 
-    #FIXME: close_http_session doesn't seem to happen now
+    # FIXME: close_http_session doesn't seem to happen now
 
     if unload_ok:
         hass.data[DOMAIN][entry.entry_id].close_http_session()

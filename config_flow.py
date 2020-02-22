@@ -4,8 +4,6 @@ import logging
 from august.api import Api
 from august.authenticator import AuthenticationState, Authenticator, ValidationResult
 from requests import RequestException, Session
-from homeassistant.core import callback
-
 import voluptuous as vol
 
 from homeassistant import config_entries, core, exceptions
@@ -38,11 +36,13 @@ DATA_SCHEMA = vol.Schema(
     }
 )
 
-async def _async_close_http_session(http_session):
+
+async def _async_close_http_session(hass, http_session):
     try:
         await hass.async_add_executor_job(http_session.close)
     except RequestException:
         pass
+
 
 async def validate_input(hass: core.HomeAssistant, data):
     """Validate the user input allows us to connect.
@@ -72,13 +72,13 @@ async def validate_input(hass: core.HomeAssistant, data):
         authentication = await hass.async_add_executor_job(authenticator.authenticate)
     except RequestException as ex:
         _LOGGER.error("Unable to connect to August service: %s", str(ex))
-        await _async_close_http_session(api_http_session)
+        await _async_close_http_session(hass, api_http_session)
         raise CannotConnect
 
     state = authentication.state
 
     if state == AuthenticationState.BAD_PASSWORD:
-        await _async_close_http_session(api_http_session)
+        await _async_close_http_session(hass, api_http_session)
         raise InvalidAuth
 
     if state == AuthenticationState.REQUIRES_VALIDATION:
@@ -86,18 +86,24 @@ async def validate_input(hass: core.HomeAssistant, data):
         result = None
 
         if code:
-            result = await hass.async_add_executor_job(authenticator.validate_verification_code,code)
+            result = await hass.async_add_executor_job(
+                authenticator.validate_verification_code, code
+            )
             _LOGGER.debug("Verification code validation: %s", result)
             if result == ValidationResult.VALIDATED:
                 # we have to call authenticate again to write the token
                 await hass.async_add_executor_job(authenticator.authenticate)
 
         if result != ValidationResult.VALIDATED:
-            _LOGGER.debug("Requesting new verification code for %s via %s", data.get(CONF_USERNAME), data.get(CONF_LOGIN_METHOD))
+            _LOGGER.debug(
+                "Requesting new verification code for %s via %s",
+                data.get(CONF_USERNAME),
+                data.get(CONF_LOGIN_METHOD),
+            )
             authenticator.send_verification_code()
-            await _async_close_http_session(api_http_session)
+            await _async_close_http_session(hass, api_http_session)
             raise RequireValidation
-    
+
     return {
         "title": username,
         "data": {
@@ -170,29 +176,6 @@ class AugustConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         return await self.async_step_user(user_input)
 
-    @staticmethod
-    @callback
-    def async_get_options_flow(config_entry):
-            return AugustOptionsFlowHandler()
-
-class AugustOptionsFlowHandler(config_entries.OptionsFlow):
-    async def async_step_init(self, user_input=None):
-        """Manage the options."""
-        if user_input is not None:
-            return
-#return self.async_create_entry(title="", data=user_input)
-
-        return self.async_show_form(
-            step_id="init",
-            data_schema=vol.Schema(
-                {
-                    vol.Required(
-                        "show_things",
-                        default=self.config_entry.options.get("show_things"),
-                    ): bool
-                }
-            ),
-        )
 
 class RequireValidation(exceptions.HomeAssistantError):
     """Error to indicate we require validation (2fa)."""
