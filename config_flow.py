@@ -168,8 +168,8 @@ class AugustConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             step_id="validation",
             data_schema=vol.Schema({vol.Required("code"): vol.All(str, vol.Strip)}),
             description_placeholders={
-                CONF_USERNAME: self.user_config.get(CONF_USERNAME),
-                CONF_LOGIN_METHOD: self.user_config.get(CONF_LOGIN_METHOD),
+                CONF_USERNAME: self.user_input.get(CONF_USERNAME),
+                CONF_LOGIN_METHOD: self.user_input.get(CONF_LOGIN_METHOD),
             },
         )
 
