@@ -1,9 +1,8 @@
 """Config flow for August integration."""
 import logging
 
-# , ValidationResult
 from august.api import Api
-from august.authenticator import AuthenticationState, Authenticator
+from august.authenticator import AuthenticationState, Authenticator, ValidationResult
 from requests import RequestException, Session
 import voluptuous as vol
 
@@ -44,26 +43,13 @@ async def validate_input(hass: core.HomeAssistant, data):
     Data has the keys from DATA_SCHEMA with values provided by the user.
     """
     """Request configuration steps from the user."""
-
-    # def august_configuration_callback(data):
-    # """Run when the configuration callback is called."""
-
-    # result = authenticator.validate_verification_code(data.get("verification_code"))
-
-    # if result == ValidationResult.INVALID_VERIFICATION_CODE:
-    # configurator.notify_errors(
-    # _CONFIGURING[DOMAIN], "Invalid verification code"
-    # )
-    # elif result == ValidationResult.VALIDATED:
-    # setup_august(hass, config, api, authenticator, token_refresh_lock)
-
     api_http_session = Session()
     api = Api(timeout=data.get(CONF_TIMEOUT), http_session=api_http_session)
 
     username = data.get(CONF_USERNAME)
     access_token_cache_file = data.get(CONF_ACCESS_TOKEN_CACHE_FILE)
     if access_token_cache_file is None:
-        access_token_cache_file = username + "." + AUGUST_CONFIG_FILE
+        access_token_cache_file = "." + username + AUGUST_CONFIG_FILE
 
     authenticator = Authenticator(
         api,
