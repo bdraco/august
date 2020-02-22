@@ -58,7 +58,7 @@ async def validate_input(hass: core.HomeAssistant, data, authenticator):
             authenticator.validate_verification_code, code
         )
         _LOGGER.debug("Verification code validation: %s", result)
-        if result != ValidationResult.VALIDATED
+        if result != ValidationResult.VALIDATED:
             raise RequireValidation
 
     authentication = None
