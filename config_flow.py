@@ -40,21 +40,6 @@ DATA_SCHEMA = vol.Schema(
 )
 
 
-class PlaceholderHub:
-    """Placeholder class to make tests pass.
-
-    TODO Remove this placeholder class and replace with things from your PyPI package.
-    """
-
-    def __init__(self, host):
-        """Initialize."""
-        self.host = host
-
-    async def authenticate(self, username, password) -> bool:
-        """Test if we can authenticate with the host."""
-        return True
-
-
 async def validate_input(hass: core.HomeAssistant, data):
     """Validate the user input allows us to connect.
 
@@ -101,16 +86,17 @@ async def validate_input(hass: core.HomeAssistant, data):
     state = authentication.state
 
     if state == AuthenticationState.BAD_PASSWORD:
+        authenticator.send_verification_code()
         raise InvalidAuth
 
     # if state == AuthenticationState.AUTHENTICATED:
     #    return True
     #
-    # if state == AuthenticationState.REQUIRES_VALIDATION:
+    if state == AuthenticationState.REQUIRES_VALIDATION:
+        raise RequireValidation
     #    # ok ?
 
     # if DOMAIN not in _CONFIGURING:
-    #    authenticator.send_verification_code()
 
     # _CONFIGURING[DOMAIN] = configurator.request_config(
     #    NOTIFICATION_TITLE,
@@ -149,12 +135,16 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             try:
                 info = await validate_input(self.hass, user_input)
-
-                return self.async_create_entry(title=info["title"], data=user_input)
+                await self.async_set_unique_id(info["data"][CONF_USERNAME])
+                return self.async_create_entry(title=info["title"], data=info["data"])
             except CannotConnect:
                 errors["base"] = "cannot_connect"
             except InvalidAuth:
                 errors["base"] = "invalid_auth"
+            except RequireValidation:
+                self.user_config = user_input
+
+                return await self.async_step_validation()
             except Exception:  # pylint: disable=broad-except
                 _LOGGER.exception("Unexpected exception")
                 errors["base"] = "unknown"
@@ -163,12 +153,30 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             step_id="user", data_schema=DATA_SCHEMA, errors=errors
         )
 
+    async def async_step_validation(self, user_input=None):
+        """Handle validation (2fa) step."""
+        if user_input:
+            return await self.async_step_user({**self.user_pass, **user_input})
+
+        return self.async_show_form(
+            step_id="validation",
+            data_schema=vol.Schema({vol.Required("code"): vol.All(str, vol.Strip)}),
+            description_placeholders={
+                CONF_USERNAME: self.user_config.get(CONF_USERNAME),
+                CONF_LOGIN_METHOD: self.user_config.get(CONF_LOGIN_METHOD),
+            },
+        )
+
     async def async_step_import(self, user_input):
         """Handle import."""
         if self._async_current_entries():
             return self.async_abort(reason="already_configured")
 
         return await self.async_step_user(user_input)
+
+
+class RequireValidation(exceptions.HomeAssistantError):
+    """Error to indicate we require validation (2fa)."""
 
 
 class CannotConnect(exceptions.HomeAssistantError):

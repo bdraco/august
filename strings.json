@@ -5,7 +5,16 @@
       "user": {
         "title": "Setup an account",
         "data": {
-          "username": "Username"
+          "username": "Username",
+          "password": "Password",
+          "login_method": "Login Method"
+        }
+      },
+      "validation": {
+        "title": "Two factor authentication",
+        "description": "Please check your {login_method} ({username}) and enter the verification code below",
+        "data": {
+          "code": "Verification code"
         }
       }
     },
