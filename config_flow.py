@@ -44,13 +44,15 @@ async def _async_close_http_session(hass, http_session):
         pass
 
 
-async def validate_input(hass: core.HomeAssistant, data, authenticator):
+async def validate_input(
+    hass: core.HomeAssistant, data, authenticator, access_token_cache_file
+):
     """Validate the user input allows us to connect.
 
     Data has the keys from DATA_SCHEMA with values provided by the user.
     """
     """Request configuration steps from the user."""
-    
+
     code = data.get("code")
 
     if code is not None:
@@ -83,7 +85,7 @@ async def validate_input(hass: core.HomeAssistant, data, authenticator):
         raise RequireValidation
 
     return {
-        "title": username,
+        "title": data.get(CONF_USERNAME),
         "data": {
             CONF_LOGIN_METHOD: data.get(CONF_LOGIN_METHOD),
             CONF_USERNAME: data.get(CONF_USERNAME),
@@ -116,8 +118,13 @@ class AugustConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             self._setup_authenticator(user_input)
 
             try:
-                info = await validate_input(self.hass, user_input, self._authenticator)
-                await _async_close_http_session(self.hass, self._authenticator)
+                info = await validate_input(
+                    self.hass,
+                    user_input,
+                    self._authenticator,
+                    self._access_token_cache_file,
+                )
+                await _async_close_http_session(self.hass, self._api_http_session)
                 await self.async_set_unique_id(user_input[CONF_USERNAME])
                 return self.async_create_entry(title=info["title"], data=info["data"])
             except CannotConnect:
@@ -135,20 +142,23 @@ class AugustConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return self.async_show_form(
             step_id="user", data_schema=DATA_SCHEMA, errors=errors
         )
-    
+
     def _setup_authenticator(self, user_input):
         try:
-            self.api_http_session != None
+            self._api_http_session is None
         except AttributeError:
-            self.api_http_session = Session()
+            self._api_http_session = Session()
         if not user_input.get("code"):
-            self.api = Api(timeout=user_input.get(CONF_TIMEOUT), http_session=self.api_http_session)
             username = user_input.get(CONF_USERNAME)
             access_token_cache_file = user_input.get(CONF_ACCESS_TOKEN_CACHE_FILE)
             if access_token_cache_file is None:
                 access_token_cache_file = "." + username + AUGUST_CONFIG_FILE
+            self._access_token_cache_file = access_token_cache_file
             self._authenticator = Authenticator(
-                self.api,
+                Api(
+                    timeout=user_input.get(CONF_TIMEOUT),
+                    http_session=self._api_http_session,
+                ),
                 user_input.get(CONF_LOGIN_METHOD),
                 username,
                 user_input.get(CONF_PASSWORD),
