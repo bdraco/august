@@ -13,7 +13,7 @@
                "login_method" : "Login Method",
                "timeout" : "Timeout (seconds)",
                "password" : "Password",
-               "username" : "Username"
+               "username" : "Username. If the Login Method is 'email', this is the email address. If the Login Method is 'phone', this is the phone number in the format '+NNNNNNNNN'"
             }
          },
          "validation" : {
