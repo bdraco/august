@@ -3,6 +3,7 @@ from datetime import timedelta
 import logging
 
 from august.activity import ActivityType, DoorOperationActivity
+from august.bridge import BridgeStatus
 from august.lock import LockStatus
 from august.util import update_lock_detail_from_activity
 
@@ -77,12 +78,20 @@ class AugustLock(LockDevice):
             self.schedule_update_ha_state()
 
     def _update_lock_status_from_detail(self):
-        lock_status = self._lock_detail.lock_status
+        detail = self._lock_detail
+        lock_status = None
+        if detail is not None:
+            lock_status = detail.lock_status
+
+        self._available = (
+            detail is not None
+            and detail.bridge is not None
+            and detail.bridge.status is not None
+            and detail.bridge.status.current == BridgeStatus.ONLINE
+        )
+
         if self._lock_status != lock_status:
             self._lock_status = lock_status
-            self._available = (
-                lock_status is not None and lock_status != LockStatus.UNKNOWN
-            )
             return True
         return False
 
@@ -112,7 +121,8 @@ class AugustLock(LockDevice):
     @property
     def is_locked(self):
         """Return true if device is on."""
-
+        if self._lock_status is None or self._lock_status is LockStatus.UNKNOWN:
+            return None
         return self._lock_status is LockStatus.LOCKED
 
     @property

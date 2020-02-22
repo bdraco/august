@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 import logging
 
 from august.activity import ActivityType
+from august.bridge import BridgeStatus
 from august.lock import LockDoorStatus
 from august.util import update_lock_detail_from_activity
 
@@ -146,8 +147,14 @@ class AugustDoorBinarySensor(BinarySensorDevice):
         if detail is not None:
             lock_door_state = detail.door_state
 
-        self._available = lock_door_state != LockDoorStatus.UNKNOWN
         self._state = lock_door_state == LockDoorStatus.OPEN
+
+        self._available = (
+            detail is not None
+            and detail.bridge is not None
+            and detail.bridge.status is not None
+            and detail.bridge.status.current == BridgeStatus.ONLINE
+        )
 
     @property
     def unique_id(self) -> str:
@@ -199,7 +206,12 @@ class AugustDoorbellBinarySensor(BinarySensorDevice):
         # The doorbell will go into standby mode when there is no motion
         # for a short while. It will wake by itself when needed so we need
         # to consider is available or we will not report motion or dings
-        self._available = detail is not None and (detail.is_online or detail.is_standby)
+        if self.device_class == DEVICE_CLASS_CONNECTIVITY:
+            self._available = True
+        else:
+            self._available = detail is not None and (
+                detail.is_online or detail.is_standby
+            )
 
     @property
     def unique_id(self) -> str:
