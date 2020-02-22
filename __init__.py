@@ -4,8 +4,9 @@ from datetime import timedelta
 from functools import partial
 import logging
 
+# , ValidationResult
 from august.api import Api, AugustApiHTTPError
-from august.authenticator import AuthenticationState, Authenticator, ValidationResult
+from august.authenticator import AuthenticationState, Authenticator
 from requests import RequestException, Session
 import voluptuous as vol
 
@@ -196,7 +197,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         conf.get(CONF_USERNAME),
         conf.get(CONF_PASSWORD),
         install_id=conf.get(CONF_INSTALL_ID),
-        access_token_cache_file=hass.config.path(conf.get(CONF_ACCESS_TOKEN_CACHE_FILE)),
+        access_token_cache_file=hass.config.path(
+            conf.get(CONF_ACCESS_TOKEN_CACHE_FILE)
+        ),
     )
 
     def close_http_session(event):
