@@ -148,7 +148,7 @@ class AugustConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             except InvalidAuth:
                 errors["base"] = "invalid_auth"
             except RequireValidation:
-                self.user_config = user_input
+                self.user_auth_details = user_input
 
                 return await self.async_step_validation()
             except Exception:  # pylint: disable=broad-except
@@ -162,7 +162,7 @@ class AugustConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_validation(self, user_input=None):
         """Handle validation (2fa) step."""
         if user_input:
-            return await self.async_step_user({**self.user_pass, **user_input})
+            return await self.async_step_user({**self.user_auth_details, **user_input})
 
         return self.async_show_form(
             step_id="validation",
