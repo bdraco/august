@@ -30,10 +30,9 @@ DATA_SCHEMA = vol.Schema({"host": str, "username": str, "password": str})
 LOGIN_METHODS = ["phone", "email"]
 DATA_SCHEMA = vol.Schema(
     {
-        vol.Required(CONF_LOGIN_METHOD): vol.In(LOGIN_METHODS),
+        vol.Required(CONF_LOGIN_METHOD, default="phone"): vol.In(LOGIN_METHODS),
         vol.Required(CONF_USERNAME): str,
         vol.Required(CONF_PASSWORD): str,
-        vol.Optional(CONF_INSTALL_ID): str,
         vol.Optional(CONF_TIMEOUT, default=DEFAULT_TIMEOUT): vol.Coerce(int),
     }
 )
@@ -140,11 +139,9 @@ class AugustConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Handle the initial step."""
         errors = {}
         if user_input is not None:
-            if self._username_in_configuration_exists(user_input):
-                return self.async_abort(reason="already_configured")
             try:
                 info = await validate_input(self.hass, user_input)
-                await self.async_set_unique_id(info["data"][CONF_USERNAME])
+                await self.async_set_unique_id(user_input[CONF_USERNAME])
                 return self.async_create_entry(title=info["title"], data=info["data"])
             except CannotConnect:
                 errors["base"] = "cannot_connect"
@@ -178,9 +175,9 @@ class AugustConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_import(self, user_input):
         """Handle import."""
+        await self.async_set_unique_id(user_input[CONF_USERNAME])
+        self._abort_if_unique_id_configured()
 
-        if self._username_in_configuration_exists(user_input):
-            return self.async_abort(reason="already_configured")
         return await self.async_step_user(user_input)
 
 
