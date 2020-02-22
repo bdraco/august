@@ -37,6 +37,9 @@ AUGUST_CONFIG_FILE = ".august.conf"
 
 DOMAIN = "august"
 
+_CONFIGURING = {}
+
+
 # Limit battery, online, and hardware updates to 1800 seconds
 # in order to reduce the number of api requests and
 # avoid hitting rate limits
@@ -72,7 +75,8 @@ def setup_august(
     hass, config_entry, api, authenticator, token_refresh_lock, api_http_session
 ):
     """Set up the August component."""
-
+    entry_id = config_entry.entry_id
+    entry_data = config_entry.data
     authentication = None
     try:
         authentication = authenticator.authenticate()
@@ -80,9 +84,11 @@ def setup_august(
         _LOGGER.error("Unable to connect to August service: %s", str(ex))
 
     state = authentication.state
+    login_method = entry_data.get(CONF_LOGIN_METHOD)
+    username = entry_data.get(CONF_USERNAME)
 
     if state == AuthenticationState.AUTHENTICATED:
-        hass.data[DOMAIN][config_entry] = AugustData(
+        hass.data[DOMAIN][entry_id] = AugustData(
             hass,
             api,
             authentication,
@@ -90,13 +96,36 @@ def setup_august(
             token_refresh_lock,
             api_http_session,
         )
-
         return True
+
     if state == AuthenticationState.BAD_PASSWORD:
         _LOGGER.error("Password is no longer valid. Please set up August again")
         return False
     if state == AuthenticationState.REQUIRES_VALIDATION:
-        _LOGGER.error("Access token is no longer valid. Please set up August again")
+        def august_configuration_validation_callback(data):
+	    result = authenticator.validate_verification_code(data.get("verification_code"))
+
+	    if result == ValidationResult.INVALID_VERIFICATION_CODE:
+		configurator.notify_errors(
+		    _CONFIGURING[entry_id], "Invalid verification code"
+		)
+	    elif result == ValidationResult.VALIDATED:
+		setup_august(hass, config_entry, api, authenticator, token_refresh_lock, api_http_session)
+
+	if entry_id not in _CONFIGURING:
+	    authenticator.send_verification_code()
+
+        _LOGGER.error("Access token is no longer valid.")
+        _CONFIGURING[entry_id] = configurator.request_config(
+	    NOTIFICATION_TITLE,
+	    august_configuration_validation_callback,
+	    description="Please check your {} ({}) and enter the verification "
+	    "code below".format(login_method, username),
+	    submit_caption="Verify",
+	    fields=[
+		{"id": "verification_code", "name": "Verification code", "type": "string"}
+	    ],
+	)
         return False
 
     return False
@@ -158,7 +187,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     setup_ok = await hass.async_add_executor_job(
         setup_august,
         hass,
-        entry.entry_id,
+        entry,
         api,
         authenticator,
         token_refresh_lock,

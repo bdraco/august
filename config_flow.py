@@ -4,6 +4,8 @@ import logging
 from august.api import Api
 from august.authenticator import AuthenticationState, Authenticator, ValidationResult
 from requests import RequestException, Session
+from homeassistant.core import callback
+
 import voluptuous as vol
 
 from homeassistant import config_entries, core, exceptions
@@ -168,6 +170,29 @@ class AugustConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         return await self.async_step_user(user_input)
 
+    @staticmethod
+    @callback
+    def async_get_options_flow(config_entry):
+            return AugustOptionsFlowHandler()
+
+class AugustOptionsFlowHandler(config_entries.OptionsFlow):
+    async def async_step_init(self, user_input=None):
+        """Manage the options."""
+        if user_input is not None:
+            return
+#return self.async_create_entry(title="", data=user_input)
+
+        return self.async_show_form(
+            step_id="init",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(
+                        "show_things",
+                        default=self.config_entry.options.get("show_things"),
+                    ): bool
+                }
+            ),
+        )
 
 class RequireValidation(exceptions.HomeAssistantError):
     """Error to indicate we require validation (2fa)."""
