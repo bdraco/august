@@ -3,7 +3,6 @@ from datetime import timedelta
 import logging
 
 from august.activity import ActivityType, DoorOperationActivity
-from august.bridge import BridgeStatus
 from august.lock import LockStatus
 from august.util import update_lock_detail_from_activity
 
@@ -80,15 +79,11 @@ class AugustLock(LockDevice):
     def _update_lock_status_from_detail(self):
         detail = self._lock_detail
         lock_status = None
+        self._available = False
+
         if detail is not None:
             lock_status = detail.lock_status
-
-        self._available = (
-            detail is not None
-            and detail.bridge is not None
-            and detail.bridge.status is not None
-            and detail.bridge.status.current == BridgeStatus.ONLINE
-        )
+            self._available = detail.bridge_is_online
 
         if self._lock_status != lock_status:
             self._lock_status = lock_status

@@ -44,12 +44,23 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
 
     for doorbell in data.doorbells:
         for sensor_type in SENSOR_TYPES_DOORBELL:
-            _LOGGER.debug(
-                "Adding doorbell sensor class %s for %s",
-                SENSOR_TYPES_DOORBELL[sensor_type][SENSOR_DEVICE_CLASS],
-                doorbell.device_name,
-            )
-            devices.append(AugustDoorbellSensor(data, sensor_type, doorbell))
+            async_state_provider = SENSOR_TYPES_DOORBELL[sensor_type][
+                SENSOR_STATE_PROVIDER
+            ]
+            state = await async_state_provider(data, doorbell)
+            if state is None:
+                _LOGGER.debug(
+                    "Not adding doorbell sensor class %s for %s because it is not present",
+                    SENSOR_TYPES_DOORBELL[sensor_type][SENSOR_DEVICE_CLASS],
+                    doorbell.device_name,
+                )
+            else:
+                _LOGGER.debug(
+                    "Adding doorbell sensor class %s for %s",
+                    SENSOR_TYPES_DOORBELL[sensor_type][SENSOR_DEVICE_CLASS],
+                    doorbell.device_name,
+                )
+                devices.append(AugustDoorbellSensor(data, sensor_type, doorbell))
 
     async_add_entities(devices, True)
 

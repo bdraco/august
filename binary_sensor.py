@@ -3,7 +3,6 @@ from datetime import datetime, timedelta
 import logging
 
 from august.activity import ActivityType
-from august.bridge import BridgeStatus
 from august.lock import LockDoorStatus
 from august.util import update_lock_detail_from_activity
 
@@ -102,16 +101,8 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
     async_add_entities(devices, True)
 
 
-class AugustDoorBinarySensor(BinarySensorDevice):
-    """Representation of an August Door binary sensor."""
-
-    def __init__(self, data, sensor_type, door):
-        """Initialize the sensor."""
-        self._data = data
-        self._sensor_type = sensor_type
-        self._door = door
-        self._state = None
-        self._available = False
+class AugustBinarySensor(BinarySensorDevice):
+    """Representation of an August binary sensor."""
 
     @property
     def available(self):
@@ -122,6 +113,18 @@ class AugustDoorBinarySensor(BinarySensorDevice):
     def is_on(self):
         """Return true if the binary sensor is on."""
         return self._state
+
+
+class AugustDoorBinarySensor(AugustBinarySensor):
+    """Representation of an August Door binary sensor."""
+
+    def __init__(self, data, sensor_type, door):
+        """Initialize the sensor."""
+        self._data = data
+        self._sensor_type = sensor_type
+        self._door = door
+        self._state = None
+        self._available = False
 
     @property
     def device_class(self):
@@ -144,17 +147,12 @@ class AugustDoorBinarySensor(BinarySensorDevice):
             update_lock_detail_from_activity(detail, door_activity)
 
         lock_door_state = None
+        self._available = False
         if detail is not None:
             lock_door_state = detail.door_state
+            self._available = detail.bridge_is_online
 
         self._state = lock_door_state == LockDoorStatus.OPEN
-
-        self._available = (
-            detail is not None
-            and detail.bridge is not None
-            and detail.bridge.status is not None
-            and detail.bridge.status.current == BridgeStatus.ONLINE
-        )
 
     @property
     def unique_id(self) -> str:
@@ -162,7 +160,7 @@ class AugustDoorBinarySensor(BinarySensorDevice):
         return find_linked_doorsense_unique_id(self._door.device_id)
 
 
-class AugustDoorbellBinarySensor(BinarySensorDevice):
+class AugustDoorbellBinarySensor(AugustBinarySensor):
     """Representation of an August binary sensor."""
 
     def __init__(self, data, sensor_type, doorbell):
@@ -172,16 +170,6 @@ class AugustDoorbellBinarySensor(BinarySensorDevice):
         self._doorbell = doorbell
         self._state = None
         self._available = False
-
-    @property
-    def available(self):
-        """Return the availability of this sensor."""
-        return self._available
-
-    @property
-    def is_on(self):
-        """Return true if the binary sensor is on."""
-        return self._state
 
     @property
     def device_class(self):
