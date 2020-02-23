@@ -210,8 +210,6 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
         )
     )
 
-    # FIXME: close_http_session doesn't seem to happen now
-
     if unload_ok:
         hass.data[DOMAIN].pop(entry.entry_id)
 
@@ -277,9 +275,7 @@ class AugustConnection:
                 self._username,
                 self._password,
                 install_id=self._install_id,
-                access_token_cache_file=hass.config.path(
-                    self._access_token_cache_file
-                ),
+                access_token_cache_file=hass.config.path(self._access_token_cache_file),
             )
 
     def close_http_session(self):
@@ -301,11 +297,7 @@ class AugustData:
     """August data object."""
 
     def __init__(
-        self,
-        hass,
-        august_connection,
-        authentication,
-        token_refresh_lock,
+        self, hass, august_connection, authentication, token_refresh_lock,
     ):
         """Init August data object."""
         self._hass = hass
