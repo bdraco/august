@@ -6,6 +6,8 @@ import logging
 
 from august.api import Api, AugustApiHTTPError
 from august.authenticator import AuthenticationState, Authenticator, ValidationResult
+from august.doorbell import Doorbell
+from august.lock import Lock
 from requests import RequestException, Session
 import voluptuous as vol
 
@@ -36,6 +38,7 @@ NOTIFICATION_TITLE = "August Setup"
 
 AUGUST_CONFIG_FILE = ".august.conf"
 
+DEFAULT_NAME = "August"
 DATA_AUGUST = "august"
 DOMAIN = "august"
 DEFAULT_ENTITY_NAMESPACE = "august"
@@ -75,7 +78,7 @@ CONFIG_SCHEMA = vol.Schema(
     extra=vol.ALLOW_EXTRA,
 )
 
-AUGUST_COMPONENTS = ["camera", "binary_sensor", "lock"]
+AUGUST_COMPONENTS = ["camera", "binary_sensor", "lock", "sensor"]
 
 
 def request_configuration(hass, config, api, authenticator, token_refresh_lock):
@@ -104,8 +107,7 @@ def request_configuration(hass, config, api, authenticator, token_refresh_lock):
     _CONFIGURING[DOMAIN] = configurator.request_config(
         NOTIFICATION_TITLE,
         august_configuration_callback,
-        description="Please check your {} ({}) and enter the verification "
-        "code below".format(login_method, username),
+        description=f"Please check your {login_method} ({username}) and enter the verification code below",
         submit_caption="Verify",
         fields=[
             {"id": "verification_code", "name": "Verification code", "type": "string"}
@@ -123,9 +125,7 @@ def setup_august(hass, config, api, authenticator, token_refresh_lock):
         _LOGGER.error("Unable to connect to August service: %s", str(ex))
 
         hass.components.persistent_notification.create(
-            "Error: {}<br />"
-            "You will need to restart hass after fixing."
-            "".format(ex),
+            "Error: {ex}<br />You will need to restart hass after fixing.",
             title=NOTIFICATION_TITLE,
             notification_id=NOTIFICATION_ID,
         )
@@ -296,6 +296,14 @@ class AugustData:
                 ]
 
         _LOGGER.debug("Completed retrieving device activities")
+
+    async def async_get_device_detail(self, device):
+        """Return the detail for a device."""
+        if isinstance(device, Lock):
+            return await self.async_get_lock_detail(device.device_id)
+        if isinstance(device, Doorbell):
+            return await self.async_get_doorbell_detail(device.device_id)
+        raise ValueError
 
     async def async_get_doorbell_detail(self, device_id):
         """Return doorbell detail."""
