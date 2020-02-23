@@ -192,10 +192,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     """Set up August from a config entry."""
 
     hass.data.setdefault(DOMAIN, {})
-    conf = entry.data
 
     august_connection = AugustConnection()
-    AugustConnection.setup(hass, conf)
+    august_connection.setup(hass, entry.data)
 
     return await async_setup_august(hass, entry, august_connection)
 
@@ -214,7 +213,6 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
     # FIXME: close_http_session doesn't seem to happen now
 
     if unload_ok:
-        hass.data[DOMAIN][entry.entry_id].close_http_session()
         hass.data[DOMAIN].pop(entry.entry_id)
 
     return unload_ok
@@ -279,7 +277,7 @@ class AugustConnection:
                 self._username,
                 self._password,
                 install_id=self._install_id,
-                access_token_cache_file=self.hass.config.path(
+                access_token_cache_file=hass.config.path(
                     self._access_token_cache_file
                 ),
             )
@@ -308,7 +306,6 @@ class AugustData:
         august_connection,
         authentication,
         token_refresh_lock,
-        api_http_session,
     ):
         """Init August data object."""
         self._hass = hass
@@ -352,7 +349,7 @@ class AugustData:
 
     async def _async_refresh_access_token_if_needed(self):
         """Refresh the august access token if needed."""
-        if self._authenticator.should_refresh():
+        if self._august_connection.authenticator.should_refresh():
             async with self._token_refresh_lock:
                 await self._hass.async_add_executor_job(self._refresh_access_token)
 

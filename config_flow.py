@@ -94,7 +94,7 @@ class AugustConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Handle the initial step."""
         errors = {}
         if user_input is not None:
-            self._august_connection.setup(user_input)
+            self._august_connection.setup(self.hass, user_input)
 
             try:
                 info = await validate_input(
