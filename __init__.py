@@ -29,6 +29,8 @@ CONF_ACCESS_TOKEN_CACHE_FILE = "access_token_cache_file"
 CONF_LOGIN_METHOD = "login_method"
 CONF_INSTALL_ID = "install_id"
 
+VALIDATION_CODE_KEY = "code"
+
 NOTIFICATION_ID = "august_notification"
 NOTIFICATION_TITLE = "August"
 
@@ -71,9 +73,7 @@ CONFIG_SCHEMA = vol.Schema(
 PLATFORMS = ["camera", "binary_sensor", "sensor", "lock"]
 
 
-async def async_request_configuration(
-    hass, config_entry, api, authenticator, api_http_session
-):
+async def async_request_configuration(hass, config_entry, august_connection):
     """Request a new verification code from the user."""
     configurator = hass.components.configurator
     entry_id = config_entry.entry_id
@@ -81,7 +81,7 @@ async def async_request_configuration(
     async def async_august_configuration_validation_callback(data):
         code = data.get("verification_code")
         result = await hass.async_add_executor_job(
-            authenticator.validate_verification_code, code
+            august_connection.authenticator.validate_verification_code, code
         )
 
         if result == ValidationResult.INVALID_VERIFICATION_CODE:
@@ -90,15 +90,15 @@ async def async_request_configuration(
                 "Invalid verification code, please make sure you are using the latest code and try again.",
             )
         elif result == ValidationResult.VALIDATED:
-            return await async_setup_august(
-                hass, config_entry, api, authenticator, api_http_session,
-            )
+            return await async_setup_august(hass, config_entry, august_connection)
 
         return False
 
     _LOGGER.error("Access token is no longer valid.")
     if entry_id not in _CONFIGURING:
-        await hass.async_add_executor_job(authenticator.send_verification_code)
+        await hass.async_add_executor_job(
+            august_connection.authenticator.send_verification_code
+        )
 
     entry_data = config_entry.data
     login_method = entry_data.get(CONF_LOGIN_METHOD)
@@ -117,13 +117,16 @@ async def async_request_configuration(
     return
 
 
-async def async_setup_august(hass, config_entry, api, authenticator, api_http_session):
+async def async_setup_august(hass, config_entry, august_connection):
     """Set up the August component."""
     authentication = None
     try:
-        authentication = await hass.async_add_executor_job(authenticator.authenticate)
+        authentication = await hass.async_add_executor_job(
+            august_connection.authenticator.authenticate
+        )
     except RequestException as ex:
         _LOGGER.error("Unable to connect to August service: %s", str(ex))
+        return False
 
     state = authentication.state
 
@@ -131,9 +134,7 @@ async def async_setup_august(hass, config_entry, api, authenticator, api_http_se
         _LOGGER.error("Password is no longer valid. Please set up August again")
         return False
     if state == AuthenticationState.REQUIRES_VALIDATION:
-        await async_request_configuration(
-            hass, config_entry, api, authenticator, api_http_session
-        )
+        await async_request_configuration(hass, config_entry, august_connection)
         return False
 
     if state != AuthenticationState.AUTHENTICATED:
@@ -150,13 +151,7 @@ async def async_setup_august(hass, config_entry, api, authenticator, api_http_se
     token_refresh_lock = asyncio.Lock()
 
     hass.data[DOMAIN][config_entry.entry_id] = await hass.async_add_executor_job(
-        AugustData,
-        hass,
-        api,
-        authentication,
-        authenticator,
-        token_refresh_lock,
-        api_http_session,
+        AugustData, hass, august_connection, authentication, token_refresh_lock,
     )
 
     for component in PLATFORMS:
@@ -199,26 +194,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     hass.data.setdefault(DOMAIN, {})
     conf = entry.data
 
-    api_http_session = None
-    try:
-        api_http_session = Session()
-    except RequestException as ex:
-        _LOGGER.warning("Creating HTTP session failed with: %s", str(ex))
+    august_connection = AugustConnection()
+    AugustConnection.setup(hass, conf)
 
-    api = Api(timeout=conf.get(CONF_TIMEOUT), http_session=api_http_session)
-
-    authenticator = Authenticator(
-        api,
-        conf.get(CONF_LOGIN_METHOD),
-        conf.get(CONF_USERNAME),
-        conf.get(CONF_PASSWORD),
-        install_id=conf.get(CONF_INSTALL_ID),
-        access_token_cache_file=hass.config.path(
-            conf.get(CONF_ACCESS_TOKEN_CACHE_FILE)
-        ),
-    )
-
-    return await async_setup_august(hass, entry, api, authenticator, api_http_session)
+    return await async_setup_august(hass, entry, august_connection)
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
@@ -241,23 +220,100 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
     return unload_ok
 
 
+class AugustConnection:
+    """Handle the connection to August."""
+
+    def __init__(self):
+        """Init the connection."""
+        try:
+            self._api_http_session = Session()
+        except RequestException as ex:
+            _LOGGER.warning("Creating HTTP session failed with: %s", str(ex))
+
+    @property
+    def authenticator(self):
+        """August authentication object from py-august."""
+        return self._authenticator
+
+    @property
+    def api(self):
+        """August api object from py-august."""
+        return self._api
+
+    @property
+    def access_token_cache_file(self):
+        """Basename of the access token cache file."""
+        return self._access_token_cache_file
+
+    def config_entry(self):
+        """Config entry."""
+        return {
+            CONF_LOGIN_METHOD: self._login_method,
+            CONF_USERNAME: self._username,
+            CONF_PASSWORD: self._password,
+            CONF_INSTALL_ID: self._install_id,
+            CONF_TIMEOUT: self._timeout,
+            CONF_ACCESS_TOKEN_CACHE_FILE: self._access_token_cache_file,
+        }
+
+    def setup(self, hass, conf):
+        """Create the api and authenticator objects."""
+        if not conf.get(VALIDATION_CODE_KEY):
+            self._login_method = conf.get(CONF_LOGIN_METHOD)
+            self._username = conf.get(CONF_USERNAME)
+            self._password = conf.get(CONF_PASSWORD)
+            self._install_id = conf.get(CONF_INSTALL_ID)
+            self._timeout = conf.get(CONF_TIMEOUT)
+
+            self._access_token_cache_file = conf.get(CONF_ACCESS_TOKEN_CACHE_FILE)
+            if self._access_token_cache_file is None:
+                self._access_token_cache_file = (
+                    "." + self._username + AUGUST_CONFIG_FILE
+                )
+
+            self._api = Api(timeout=self._timeout, http_session=self._api_http_session,)
+
+            self._authenticator = Authenticator(
+                self._api,
+                self._login_method,
+                self._username,
+                self._password,
+                install_id=self._install_id,
+                access_token_cache_file=self.hass.config.path(
+                    self._access_token_cache_file
+                ),
+            )
+
+    def close_http_session(self):
+        """Close API sessions used to connect to August."""
+        _LOGGER.debug("Closing August HTTP sessions")
+        if self._api_http_session:
+            try:
+                self._api_http_session.close()
+            except RequestException:
+                pass
+
+    def __del__(self):
+        """Close out the http session on destroy."""
+        self.close_http_session()
+        return
+
+
 class AugustData:
     """August data object."""
 
     def __init__(
         self,
         hass,
-        api,
+        august_connection,
         authentication,
-        authenticator,
         token_refresh_lock,
         api_http_session,
     ):
         """Init August data object."""
         self._hass = hass
-        self._api = api
-        self._api_http_session = api_http_session
-        self._authenticator = authenticator
+        self._august_connection = august_connection
+        self._api = august_connection.api
         self._access_token = authentication.access_token
         self._access_token_expires = authentication.access_token_expires
 
@@ -278,17 +334,6 @@ class AugustData:
         self._filter_inoperative_locks()
 
         self._update_doorbells_detail()
-
-    def close_http_session(self):
-        """Close API sessions used to connect to August."""
-        _LOGGER.debug("Closing August HTTP sessions")
-        if self._api_http_session:
-            try:
-                self._api_http_session.close()
-            except RequestException:
-                pass
-
-        _LOGGER.debug("August HTTP session closed.")
 
     @property
     def house_ids(self):
@@ -312,7 +357,9 @@ class AugustData:
                 await self._hass.async_add_executor_job(self._refresh_access_token)
 
     def _refresh_access_token(self):
-        refreshed_authentication = self._authenticator.refresh_access_token(force=False)
+        refreshed_authentication = self._august_connection.authenticator.refresh_access_token(
+            force=False
+        )
         _LOGGER.info(
             "Refreshed august access token. The old token expired at %s, and the new token expires at %s",
             self._access_token_expires,
