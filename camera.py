@@ -64,6 +64,19 @@ class AugustCamera(Camera):
 
     async def async_camera_image(self):
         """Return bytes of camera image."""
+        if self._doorbell_detail is None:
+            return None
+
+        if self._image_url is not self._doorbell_detail.image_url:
+            self._image_url = self._doorbell_detail.image_url
+            self._image_content = await self.hass.async_add_executor_job(
+                self._camera_image
+            )
+        return self._image_content
+
+
+    async def async_update(self):
+        """Updates camera data."""
         self._doorbell_detail = await self._data.async_get_doorbell_detail(
             self._doorbell.device_id
         )
@@ -78,17 +91,9 @@ class AugustCamera(Camera):
             update_doorbell_image_from_activity(
                 self._doorbell_detail, doorbell_activity
             )
-
-        if self._image_url is not self._doorbell_detail.image_url:
-            self._image_url = self._doorbell_detail.image_url
-            self._image_content = await self.hass.async_add_executor_job(
-                self._camera_image
-            )
-
         self._firmware_version = self._doorbell_detail.firmware_version
         self._model = self._doorbell_detail.model
 
-        return self._image_content
 
     def _camera_image(self):
         """Return bytes of camera image."""
@@ -104,7 +109,7 @@ class AugustCamera(Camera):
         """Return the device_info of the device."""
         return {
             "identifiers": {(DOMAIN, self._doorbell.device_id)},
-            "name": self._doorbell.device_name,
+            "name": self._doorbell.device_name + " Camera",
             "manufacturer": DEFAULT_NAME,
             "model": self._model,
             "sw_version": self._firmware_version,

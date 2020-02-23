@@ -163,7 +163,7 @@ async def async_setup_august(hass, config_entry, august_connection):
 
 
 async def async_setup(hass: HomeAssistant, config: dict):
-    """Set up the August component."""
+    """Set up the August component from YAML."""
 
     conf = config.get(DOMAIN)
 
