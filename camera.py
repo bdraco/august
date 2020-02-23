@@ -74,9 +74,8 @@ class AugustCamera(Camera):
             )
         return self._image_content
 
-
     async def async_update(self):
-        """Updates camera data."""
+        """Update camera data."""
         self._doorbell_detail = await self._data.async_get_doorbell_detail(
             self._doorbell.device_id
         )
@@ -93,7 +92,6 @@ class AugustCamera(Camera):
             )
         self._firmware_version = self._doorbell_detail.firmware_version
         self._model = self._doorbell_detail.model
-
 
     def _camera_image(self):
         """Return bytes of camera image."""
