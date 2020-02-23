@@ -25,7 +25,7 @@ async def _async_retrieve_online_state(data, doorbell, detail):
     if detail is None:
         return None
 
-    return detail.is_online
+    return detail.is_online or detail.is_standby
 
 
 async def _async_retrieve_motion_state(data, doorbell, detail):
