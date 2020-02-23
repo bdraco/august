@@ -22,9 +22,6 @@ SCAN_INTERVAL = timedelta(seconds=5)
 
 async def _async_retrieve_online_state(data, detail):
     """Get the latest state of the sensor."""
-    if detail is None:
-        return None
-
     return detail.is_online or detail.status == "standby"
 
 
@@ -185,7 +182,6 @@ class AugustDoorbellBinarySensor(AugustBinarySensor):
             SENSOR_STATE_PROVIDER
         ]
         detail = await self._data.async_get_doorbell_detail(self._doorbell.device_id)
-        self._state = await async_state_provider(self._data, detail)
         # The doorbell will go into standby mode when there is no motion
         # for a short while. It will wake by itself when needed so we need
         # to consider is available or we will not report motion or dings
@@ -196,8 +192,10 @@ class AugustDoorbellBinarySensor(AugustBinarySensor):
                 detail.is_online or detail.status == "standby"
             )
 
+        self._state = None
         if detail is not None:
             self._firmware_version = detail.firmware_version
+            self._state = await async_state_provider(self._data, detail)
 
     @property
     def unique_id(self) -> str:

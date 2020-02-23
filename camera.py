@@ -62,6 +62,10 @@ class AugustCamera(Camera):
 
     async def async_camera_image(self):
         """Return bytes of camera image."""
+        self._doorbell_detail = await self._data.async_get_doorbell_detail(
+            self._doorbell.device_id
+        )
+
         if self._doorbell_detail is None:
             return None
 
