@@ -1,0 +1,30 @@
+{
+  "config": {
+    "title": "August",
+    "step": {
+      "user": {
+        "title": "Setup an account",
+        "data": {
+          "username": "Username",
+          "password": "Password",
+          "login_method": "Login Method"
+        }
+      },
+      "validation": {
+        "title": "Two factor authentication",
+        "description": "Please check your {login_method} ({username}) and enter the verification code below",
+        "data": {
+          "code": "Verification code"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect, please try again",
+      "invalid_auth": "Invalid authentication",
+      "unknown": "Unexpected error"
+    },
+    "abort": {
+      "already_configured": "Account is already configured"
+    }
+  }
+}
