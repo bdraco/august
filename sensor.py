@@ -5,7 +5,7 @@ import logging
 from homeassistant.components.sensor import DEVICE_CLASS_BATTERY
 from homeassistant.helpers.entity import Entity
 
-from .const import DEFAULT_NAME, DOMAIN, DATA_AUGUST
+from .const import DATA_AUGUST, DEFAULT_NAME, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 

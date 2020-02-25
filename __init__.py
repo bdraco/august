@@ -23,6 +23,7 @@ from .const import (
     CONF_ACCESS_TOKEN_CACHE_FILE,
     CONF_INSTALL_ID,
     CONF_LOGIN_METHOD,
+    DATA_AUGUST,
     DEFAULT_AUGUST_CONFIG_FILE,
     DEFAULT_NAME,
     DEFAULT_TIMEOUT,
@@ -38,7 +39,7 @@ from .gateway import AugustGateway
 
 _LOGGER = logging.getLogger(__name__)
 
-2FA_REVALIDATE = "verify_configurator"
+TWO_FA_REVALIDATE = "verify_configurator"
 
 DEFAULT_SCAN_INTERVAL = timedelta(seconds=10)
 
@@ -77,7 +78,7 @@ async def async_request_validation(hass, config_entry, august_gateway):
 
         if result == ValidationResult.INVALID_VERIFICATION_CODE:
             configurator.async_notify_errors(
-                hass.data[DOMAIN][entry_id][2FA_REVALIDATE],
+                hass.data[DOMAIN][entry_id][TWO_FA_REVALIDATE],
                 "Invalid verification code, please make sure you are using the latest code and try again.",
             )
         elif result == ValidationResult.VALIDATED:
@@ -85,7 +86,7 @@ async def async_request_validation(hass, config_entry, august_gateway):
 
         return False
 
-    if 2FA_REVALIDATE not in hass.data[DOMAIN][entry_id]:
+    if TWO_FA_REVALIDATE not in hass.data[DOMAIN][entry_id]:
         await hass.async_add_executor_job(
             august_gateway.authenticator.send_verification_code
         )
@@ -94,7 +95,7 @@ async def async_request_validation(hass, config_entry, august_gateway):
     login_method = entry_data.get(CONF_LOGIN_METHOD)
     username = entry_data.get(CONF_USERNAME)
 
-    hass.data[DOMAIN][entry_id][2FA_REVALIDATE] = configurator.async_request_config(
+    hass.data[DOMAIN][entry_id][TWO_FA_REVALIDATE] = configurator.async_request_config(
         DEFAULT_NAME + " (" + username + ")",
         async_august_configuration_validation_callback,
         description="August must be re-verified. Please check your {} ({}) and enter the verification "
@@ -109,7 +110,8 @@ async def async_request_validation(hass, config_entry, august_gateway):
 
 async def async_setup_august(hass, config_entry, august_gateway):
     """Set up the August component."""
-    
+
+    entry_id = config_entry.entry_id
     hass.data.DOMAIN.setdefault(entry_id, {})
 
     try:
@@ -121,17 +123,18 @@ async def async_setup_august(hass, config_entry, august_gateway):
         _LOGGER.error("Password is no longer valid. Please set up August again")
         return False
 
-    entry_id = config_entry.entry_id
     # We still use the configurator to get a new 2fa code
     # when needed since config_flow doesn't have a way
     # to re-request if it expires
-    if 2FA_REVALIDATE in hass.data[DOMAIN][entry_id]:
-        hass.components.configurator.async_request_done(hass.data[DOMAIN][entry_id].pop(2FA_REVALIDATE))
+    if TWO_FA_REVALIDATE in hass.data[DOMAIN][entry_id]:
+        hass.components.configurator.async_request_done(
+            hass.data[DOMAIN][entry_id].pop(TWO_FA_REVALIDATE)
+        )
 
     hass.data[DOMAIN][entry_id][DATA_AUGUST] = await hass.async_add_executor_job(
         AugustData, hass, august_gateway
     )
-    
+
     for component in AUGUST_COMPONENTS:
         hass.async_create_task(
             hass.config_entries.async_forward_entry_setup(config_entry, component)

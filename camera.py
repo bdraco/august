@@ -5,7 +5,7 @@ import requests
 
 from homeassistant.components.camera import Camera
 
-from .const import DEFAULT_NAME, DEFAULT_TIMEOUT, DOMAIN, DATA_AUGUST
+from .const import DATA_AUGUST, DEFAULT_NAME, DEFAULT_TIMEOUT, DOMAIN
 
 SCAN_INTERVAL = timedelta(seconds=5)
 

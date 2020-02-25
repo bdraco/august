@@ -13,7 +13,7 @@ from homeassistant.components.binary_sensor import (
     BinarySensorDevice,
 )
 
-from .const import DEFAULT_NAME, DOMAIN, DATA_AUGUST
+from .const import DATA_AUGUST, DEFAULT_NAME, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 

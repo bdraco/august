@@ -8,6 +8,7 @@ from august.authenticator import AuthenticationState, Authenticator
 from requests import RequestException, Session
 
 from homeassistant.const import CONF_PASSWORD, CONF_TIMEOUT, CONF_USERNAME
+from homeassistant.core import callback
 
 from .const import (
     CONF_ACCESS_TOKEN_CACHE_FILE,
@@ -77,8 +78,7 @@ class AugustGateway:
         self._config = conf
 
         self._api = Api(
-            timeout=self._config.get(CONF_TIMEOUT),
-            http_session=self._api_http_session,
+            timeout=self._config.get(CONF_TIMEOUT), http_session=self._api_http_session,
         )
 
         self._authenticator = Authenticator(
