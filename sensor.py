@@ -1,11 +1,18 @@
 """Support for August sensors."""
-from datetime import timedelta
 import logging
 
 from homeassistant.components.sensor import DEVICE_CLASS_BATTERY
+from homeassistant.core import callback
+from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity import Entity
 
-from .const import DATA_AUGUST, DEFAULT_NAME, DOMAIN
+from .const import (
+    AUGUST_DEVICE_UPDATE,
+    DATA_AUGUST,
+    DEFAULT_NAME,
+    DOMAIN,
+    MIN_TIME_BETWEEN_DETAIL_UPDATES,
+)
 
 BATTERY_LEVEL_FULL = "Full"
 BATTERY_LEVEL_MEDIUM = "Medium"
@@ -13,7 +20,7 @@ BATTERY_LEVEL_LOW = "Low"
 
 _LOGGER = logging.getLogger(__name__)
 
-SCAN_INTERVAL = timedelta(seconds=5)
+SCAN_INTERVAL = MIN_TIME_BETWEEN_DETAIL_UPDATES
 
 
 def _retrieve_device_battery_state(detail):
@@ -157,3 +164,20 @@ class AugustBatterySensor(Entity):
             "sw_version": self._firmware_version,
             "model": self._model,
         }
+
+    async def async_added_to_hass(self):
+        """Register callbacks."""
+
+        @callback
+        def update():
+            """Update the state."""
+            self.async_schedule_update_ha_state(True)
+
+        self._undo_dispatch_subscription = async_dispatcher_connect(
+            self.hass, f"{AUGUST_DEVICE_UPDATE}-{self._device.device_id}", update
+        )
+
+    async def async_will_remove_from_hass(self):
+        """Undo subscription."""
+        if self._undo_dispatch_subscription:
+            self._undo_dispatch_subscription()

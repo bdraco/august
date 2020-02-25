@@ -1,14 +1,21 @@
 """Support for August camera."""
-from datetime import timedelta
-
 from august.activity import ActivityType
 from august.util import update_doorbell_image_from_activity
 
 from homeassistant.components.camera import Camera
+from homeassistant.core import callback
+from homeassistant.helpers.dispatcher import async_dispatcher_connect
 
-from .const import DATA_AUGUST, DEFAULT_NAME, DEFAULT_TIMEOUT, DOMAIN
+from .const import (
+    AUGUST_DEVICE_UPDATE,
+    DATA_AUGUST,
+    DEFAULT_NAME,
+    DEFAULT_TIMEOUT,
+    DOMAIN,
+    MIN_TIME_BETWEEN_DETAIL_UPDATES,
+)
 
-SCAN_INTERVAL = timedelta(seconds=5)
+SCAN_INTERVAL = MIN_TIME_BETWEEN_DETAIL_UPDATES
 
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
@@ -67,7 +74,7 @@ class AugustCamera(Camera):
         self._doorbell_detail = await self._data.async_get_doorbell_detail(
             self._doorbell.device_id
         )
-        doorbell_activity = await self._data.async_get_latest_device_activity(
+        doorbell_activity = self._data.activity_stream.get_latest_device_activity(
             self._doorbell.device_id, ActivityType.DOORBELL_MOTION
         )
 
@@ -117,3 +124,20 @@ class AugustCamera(Camera):
             "sw_version": self._firmware_version,
             "model": self._model,
         }
+
+    async def async_added_to_hass(self):
+        """Register callbacks."""
+
+        @callback
+        def update():
+            """Update the state."""
+            self.async_schedule_update_ha_state(True)
+
+        self._undo_dispatch_subscription = async_dispatcher_connect(
+            self.hass, f"{AUGUST_DEVICE_UPDATE}-{self._doorbell.device_id}", update
+        )
+
+    async def async_will_remove_from_hass(self):
+        """Undo subscription."""
+        if self._undo_dispatch_subscription:
+            self._undo_dispatch_subscription()

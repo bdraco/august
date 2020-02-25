@@ -1,7 +1,5 @@
 """Support for August devices."""
 import asyncio
-from datetime import timedelta
-from functools import partial
 import logging
 
 from august.api import AugustApiHTTPError
@@ -18,6 +16,7 @@ from homeassistant.exceptions import HomeAssistantError
 import homeassistant.helpers.config_validation as cv
 from homeassistant.util import Throttle
 
+from .activity import ActivityStream
 from .const import (
     AUGUST_COMPONENTS,
     CONF_ACCESS_TOKEN_CACHE_FILE,
@@ -29,7 +28,6 @@ from .const import (
     DEFAULT_TIMEOUT,
     DOMAIN,
     LOGIN_METHODS,
-    MIN_TIME_BETWEEN_ACTIVITY_UPDATES,
     MIN_TIME_BETWEEN_DETAIL_UPDATES,
     VERIFICATION_CODE_KEY,
 )
@@ -40,7 +38,7 @@ _LOGGER = logging.getLogger(__name__)
 
 TWO_FA_REVALIDATE = "verify_configurator"
 
-DEFAULT_SCAN_INTERVAL = timedelta(seconds=10)
+DEFAULT_SCAN_INTERVAL = MIN_TIME_BETWEEN_DETAIL_UPDATES
 
 CONFIG_SCHEMA = vol.Schema(
     {
@@ -178,6 +176,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
     """Unload a config entry."""
+    hass.data[DOMAIN][entry.entry_id][DATA_AUGUST].activity_stream.stop()
+
     unload_ok = all(
         await asyncio.gather(
             *[
@@ -195,8 +195,6 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
 
 class AugustData:
     """August data object."""
-
-    DEFAULT_ACTIVITY_FETCH_LIMIT = 10
 
     def __init__(self, hass, august_gateway):
         """Init August data object."""
@@ -224,6 +222,10 @@ class AugustData:
         self._update_doorbells_detail()
         self._filter_inoperative_locks()
 
+        self.activity_stream = ActivityStream(
+            hass, self._api, self._august_gateway, self._house_ids
+        )
+
     @property
     def house_ids(self):
         """Return a list of house_ids."""
@@ -238,49 +240,6 @@ class AugustData:
     def locks(self):
         """Return a list of locks."""
         return self._locks
-
-    async def async_get_device_activities(self, device_id, *activity_types):
-        """Return a list of activities."""
-        _LOGGER.debug("Getting device activities for %s", device_id)
-        await self._async_update_device_activities()
-
-        activities = self._activities_by_id.get(device_id, [])
-        if activity_types:
-            return [a for a in activities if a.activity_type in activity_types]
-        return activities
-
-    async def async_get_latest_device_activity(self, device_id, *activity_types):
-        """Return latest activity."""
-        activities = await self.async_get_device_activities(device_id, *activity_types)
-        return next(iter(activities or []), None)
-
-    @Throttle(MIN_TIME_BETWEEN_ACTIVITY_UPDATES)
-    async def _async_update_device_activities(self, limit=DEFAULT_ACTIVITY_FETCH_LIMIT):
-        """Update data object with latest from August API."""
-
-        # This is the only place we refresh the api token
-        await self._august_gateway.async_refresh_access_token_if_needed()
-
-        return await self._hass.async_add_executor_job(
-            partial(self._update_device_activities, limit=limit)
-        )
-
-    def _update_device_activities(self, limit=DEFAULT_ACTIVITY_FETCH_LIMIT):
-        _LOGGER.debug("Start retrieving device activities")
-        for house_id in self.house_ids:
-            _LOGGER.debug("Updating device activity for house id %s", house_id)
-
-            activities = self._api.get_house_activities(
-                self._august_gateway.access_token, house_id, limit=limit
-            )
-
-            device_ids = {a.device_id for a in activities}
-            for device_id in device_ids:
-                self._activities_by_id[device_id] = [
-                    a for a in activities if a.device_id == device_id
-                ]
-
-        _LOGGER.debug("Completed retrieving device activities")
 
     async def async_get_device_detail(self, device):
         """Return the detail for a device."""

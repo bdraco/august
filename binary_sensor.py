@@ -7,17 +7,21 @@ from august.lock import LockDoorStatus
 from august.util import update_lock_detail_from_activity
 
 from homeassistant.components.binary_sensor import (
+    AUGUST_DEVICE_UPDATE,
     DEVICE_CLASS_CONNECTIVITY,
     DEVICE_CLASS_MOTION,
     DEVICE_CLASS_OCCUPANCY,
+    MIN_TIME_BETWEEN_DETAIL_UPDATES,
     BinarySensorDevice,
 )
+from homeassistant.core import callback
+from homeassistant.helpers.dispatcher import async_dispatcher_connect
 
 from .const import DATA_AUGUST, DEFAULT_NAME, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
-SCAN_INTERVAL = timedelta(seconds=5)
+SCAN_INTERVAL = MIN_TIME_BETWEEN_DETAIL_UPDATES
 
 
 async def _async_retrieve_online_state(data, detail):
@@ -43,7 +47,7 @@ async def _async_retrieve_ding_state(data, detail):
 
 async def _async_activity_time_based_state(data, device_id, activity_types):
     """Get the latest state of the sensor."""
-    latest = await data.async_get_latest_device_activity(device_id, *activity_types)
+    latest = data.activity_stream.get_latest_device_activity(device_id, activity_types)
 
     if latest is not None:
         start = latest.activity_start_time
@@ -128,8 +132,8 @@ class AugustDoorBinarySensor(BinarySensorDevice):
 
     async def async_update(self):
         """Get the latest state of the sensor and update activity."""
-        door_activity = await self._data.async_get_latest_device_activity(
-            self._door.device_id, ActivityType.DOOR_OPERATION
+        door_activity = self._data.activity_stream.get_latest_device_activity(
+            self._door.device_id, [ActivityType.DOOR_OPERATION]
         )
         detail = await self._data.async_get_lock_detail(self._door.device_id)
 
@@ -161,6 +165,23 @@ class AugustDoorBinarySensor(BinarySensorDevice):
             "sw_version": self._firmware_version,
             "model": self._model,
         }
+
+    async def async_added_to_hass(self):
+        """Register callbacks."""
+
+        @callback
+        def update():
+            """Update the state."""
+            self.async_schedule_update_ha_state(True)
+
+        self._undo_dispatch_subscription = async_dispatcher_connect(
+            self.hass, f"{AUGUST_DEVICE_UPDATE}-{self._door.device_id}", update
+        )
+
+    async def async_will_remove_from_hass(self):
+        """Undo subscription."""
+        if self._undo_dispatch_subscription:
+            self._undo_dispatch_subscription()
 
 
 class AugustDoorbellBinarySensor(BinarySensorDevice):
@@ -236,3 +257,20 @@ class AugustDoorbellBinarySensor(BinarySensorDevice):
             "sw_version": self._firmware_version,
             "model": self._model,
         }
+
+    async def async_added_to_hass(self):
+        """Register callbacks."""
+
+        @callback
+        def update():
+            """Update the state."""
+            self.async_schedule_update_ha_state(True)
+
+        self._undo_dispatch_subscription = async_dispatcher_connect(
+            self.hass, f"{AUGUST_DEVICE_UPDATE}-{self._doorbell.device_id}", update
+        )
+
+    async def async_will_remove_from_hass(self):
+        """Undo subscription."""
+        if self._undo_dispatch_subscription:
+            self._undo_dispatch_subscription()
