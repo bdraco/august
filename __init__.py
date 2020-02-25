@@ -112,7 +112,7 @@ async def async_setup_august(hass, config_entry, august_gateway):
     """Set up the August component."""
 
     entry_id = config_entry.entry_id
-    hass.data.DOMAIN.setdefault(entry_id, {})
+    hass.data[DOMAIN].setdefault(entry_id, {})
 
     try:
         august_gateway.authenticate()
