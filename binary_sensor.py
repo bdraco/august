@@ -102,6 +102,7 @@ class AugustDoorBinarySensor(BinarySensorDevice):
 
     def __init__(self, data, sensor_type, door):
         """Initialize the sensor."""
+        self._undo_dispatch_subscription = None
         self._data = data
         self._sensor_type = sensor_type
         self._door = door
@@ -189,6 +190,7 @@ class AugustDoorbellBinarySensor(BinarySensorDevice):
 
     def __init__(self, data, sensor_type, doorbell):
         """Initialize the sensor."""
+        self._undo_dispatch_subscription = None
         self._data = data
         self._sensor_type = sensor_type
         self._doorbell = doorbell

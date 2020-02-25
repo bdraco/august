@@ -35,6 +35,7 @@ class AugustCamera(Camera):
     def __init__(self, data, doorbell, timeout):
         """Initialize a August security camera."""
         super().__init__()
+        self._undo_dispatch_subscription = None
         self._data = data
         self._doorbell = doorbell
         self._doorbell_detail = None

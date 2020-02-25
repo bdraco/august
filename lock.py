@@ -40,6 +40,7 @@ class AugustLock(LockDevice):
 
     def __init__(self, data, lock):
         """Initialize the lock."""
+        self._undo_dispatch_subscription = None
         self._data = data
         self._lock = lock
         self._lock_status = None
