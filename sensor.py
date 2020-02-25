@@ -155,4 +155,5 @@ class AugustBatterySensor(Entity):
             "name": self._device.device_name,
             "manufacturer": DEFAULT_NAME,
             "sw_version": self._firmware_version,
+            "model": self._model,
         }

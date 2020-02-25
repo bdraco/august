@@ -158,6 +158,7 @@ class AugustDoorBinarySensor(BinarySensorDevice):
             "name": self._door.device_name,
             "manufacturer": DEFAULT_NAME,
             "sw_version": self._firmware_version,
+            "model": self._model,
         }
 
 
@@ -232,4 +233,5 @@ class AugustDoorbellBinarySensor(BinarySensorDevice):
             "name": self._doorbell.device_name,
             "manufacturer": "August",
             "sw_version": self._firmware_version,
+            "model": self._model,
         }

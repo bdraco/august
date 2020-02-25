@@ -137,6 +137,7 @@ class AugustLock(LockDevice):
             "name": self._lock.device_name,
             "manufacturer": DEFAULT_NAME,
             "sw_version": self._firmware_version,
+            "model": self._model,
         }
 
     @property
