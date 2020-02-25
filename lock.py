@@ -85,7 +85,7 @@ class AugustLock(LockDevice):
     async def async_update(self):
         """Get the latest state of the sensor and update activity."""
         self._lock_detail = await self._data.async_get_lock_detail(self._lock.device_id)
-        lock_activity = self._data.activity_stream.get_latest_device_activity(
+        lock_activity = self._data.activity_stream.async_get_latest_device_activity(
             self._lock.device_id, [ActivityType.LOCK_OPERATION]
         )
 

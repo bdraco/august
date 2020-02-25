@@ -47,7 +47,9 @@ async def _async_retrieve_ding_state(data, detail):
 
 async def _async_activity_time_based_state(data, device_id, activity_types):
     """Get the latest state of the sensor."""
-    latest = data.activity_stream.get_latest_device_activity(device_id, activity_types)
+    latest = data.activity_stream.async_get_latest_device_activity(
+        device_id, activity_types
+    )
 
     if latest is not None:
         start = latest.activity_start_time
@@ -133,7 +135,7 @@ class AugustDoorBinarySensor(BinarySensorDevice):
 
     async def async_update(self):
         """Get the latest state of the sensor and update activity."""
-        door_activity = self._data.activity_stream.get_latest_device_activity(
+        door_activity = self._data.activity_stream.async_get_latest_device_activity(
             self._door.device_id, [ActivityType.DOOR_OPERATION]
         )
         detail = await self._data.async_get_lock_detail(self._door.device_id)

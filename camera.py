@@ -75,7 +75,7 @@ class AugustCamera(Camera):
         self._doorbell_detail = await self._data.async_get_doorbell_detail(
             self._doorbell.device_id
         )
-        doorbell_activity = self._data.activity_stream.get_latest_device_activity(
+        doorbell_activity = self._data.activity_stream.async_get_latest_device_activity(
             self._doorbell.device_id, ActivityType.DOORBELL_MOTION
         )
 

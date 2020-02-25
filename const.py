@@ -29,7 +29,7 @@ MIN_TIME_BETWEEN_DETAIL_UPDATES = timedelta(seconds=1800)
 
 # Activity needs to be checked more frequently as the
 # doorbell motion and rings are included here
-MIN_TIME_BETWEEN_ACTIVITY_UPDATES = timedelta(seconds=10)
+ACTIVITY_UPDATE_INTERVAL = timedelta(seconds=10)
 
 DEFAULT_SCAN_INTERVAL = timedelta(seconds=10)
 

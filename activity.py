@@ -1,19 +1,22 @@
 """Consume the august activity stream."""
 import logging
 
+from requests import RequestException
+
 from homeassistant.core import callback
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.event import async_track_time_interval
 
-from .const import AUGUST_DEVICE_UPDATE, MIN_TIME_BETWEEN_ACTIVITY_UPDATES
+from .const import ACTIVITY_UPDATE_INTERVAL, AUGUST_DEVICE_UPDATE
 
 _LOGGER = logging.getLogger(__name__)
+
+ACTIVITY_STREAM_FETCH_LIMIT = 10
+ACTIVITY_CATCH_UP_FETCH_LIMIT = 200
 
 
 class ActivityStream:
     """August activity stream handler."""
-
-    DEFAULT_ACTIVITY_FETCH_LIMIT = 10
 
     def __init__(self, hass, api, august_gateway, house_ids):
         """Init August activity stream object."""
@@ -22,8 +25,9 @@ class ActivityStream:
         self._api = api
         self._house_ids = house_ids
         self._latest_activities_by_id_type = {}
+        self._last_update_time = None
         self._abort_async_track_time_interval = async_track_time_interval(
-            hass, self._async_update, MIN_TIME_BETWEEN_ACTIVITY_UPDATES,
+            hass, self._async_update, ACTIVITY_UPDATE_INTERVAL
         )
 
     def stop(self):
@@ -31,33 +35,57 @@ class ActivityStream:
         self._abort_async_track_time_interval()
 
     @callback
-    def get_latest_device_activity(self, device_id, activity_types):
-        """Return latest activity of each requested type."""
-        activities = []
-        for activity_type in activity_types:
-            if activity_type in self._latest_activities_by_id_type[device_id]:
-                activities.append(
-                    self._latest_activities_by_id_type[device_id][activity_type]
-                )
-        return activities
+    def async_get_latest_device_activity(self, device_id, activity_types):
+        """Return latest activity that is one of the acitivty_types."""
+        if device_id not in self._latest_activities_by_id_type:
+            return None
 
-    async def _async_update(self, limit=DEFAULT_ACTIVITY_FETCH_LIMIT):
+        latest_device_activities = self._latest_activities_by_id_type[device_id]
+        latest_activity = None
+
+        for activity_type in activity_types:
+            if activity_type in latest_device_activities:
+                if (
+                    latest_activity is not None
+                    and latest_device_activities[activity_type].activity_start_time
+                    < latest_activity.activity_start_time
+                ):
+                    continue
+                latest_activity = latest_device_activities[activity_type]
+
+        return latest_activity
+
+    async def _async_update(self, time):
         """Update the activity stream from August."""
 
         # This is the only place we refresh the api token
         await self._august_gateway.async_refresh_access_token_if_needed()
 
         return await self._hass.async_add_executor_job(
-            self._update_device_activities, limit
+            self._update_device_activities, time
         )
 
-    def _update_device_activities(self, limit):
+    def _update_device_activities(self, time):
         _LOGGER.debug("Start retrieving device activities")
+
+        limit = (
+            ACTIVITY_STREAM_FETCH_LIMIT
+            if self._last_update_time
+            else ACTIVITY_CATCH_UP_FETCH_LIMIT
+        )
+
         for house_id in self._house_ids:
             _LOGGER.debug("Updating device activity for house id %s", house_id)
-            activities = self._api.get_house_activities(
-                self._august_gateway.access_token, house_id, limit=limit
-            )
+            try:
+                activities = self._api.get_house_activities(
+                    self._august_gateway.access_token, house_id, limit=limit
+                )
+            except RequestException as ex:
+                _LOGGER.error(
+                    "Request error trying to retrieve activity for house id %s: %s",
+                    house_id,
+                    ex,
+                )
             _LOGGER.debug(
                 "Completed retrieving device activities for house id %s", house_id
             )
@@ -66,6 +94,8 @@ class ActivityStream:
 
             if len(updated_device_ids):
                 self._signal_device_updates(updated_device_ids)
+
+        self._last_update_time = time
 
     def _signal_device_updates(self, updated_device_ids):
         for device_id in updated_device_ids:
