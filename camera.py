@@ -76,7 +76,7 @@ class AugustCamera(Camera):
             self._doorbell.device_id
         )
         doorbell_activity = self._data.activity_stream.async_get_latest_device_activity(
-            self._doorbell.device_id, ActivityType.DOORBELL_MOTION
+            self._doorbell.device_id, [ActivityType.DOORBELL_MOTION]
         )
 
         if doorbell_activity is not None:

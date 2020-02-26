@@ -122,3 +122,5 @@ class ActivityStream:
             ] = activity
 
             updated_device_ids.add(activity.device_id)
+
+        return updated_device_ids

@@ -14,11 +14,13 @@ from homeassistant.const import CONF_PASSWORD, CONF_TIMEOUT, CONF_USERNAME
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 import homeassistant.helpers.config_validation as cv
+from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.util import Throttle
 
 from .activity import ActivityStream
 from .const import (
     AUGUST_COMPONENTS,
+    AUGUST_DEVICE_UPDATE,
     CONF_ACCESS_TOKEN_CACHE_FILE,
     CONF_INSTALL_ID,
     CONF_LOGIN_METHOD,
@@ -214,7 +216,6 @@ class AugustData:
 
         self._doorbell_detail_by_id = {}
         self._lock_detail_by_id = {}
-        self._activities_by_id = {}
 
         # We check the locks right away so we can
         # remove inoperative ones
@@ -276,11 +277,11 @@ class AugustData:
         await self._async_update_locks_detail()
         return self._lock_detail_by_id[device_id]
 
-    def get_lock_name(self, device_id):
-        """Return lock name as August has it stored."""
-        for lock in self._locks:
-            if lock.device_id == device_id:
-                return lock.device_name
+    def get_device_name(self, device_id):
+        """Return doorbell or lock name as August has it stored."""
+        for device in self._devices + self._doorbells:
+            if device.device_id == device_id:
+                return device.device_name
 
     @Throttle(MIN_TIME_BETWEEN_DETAIL_UPDATES)
     async def _async_update_locks_detail(self):
@@ -315,9 +316,8 @@ class AugustData:
 
     def lock(self, device_id):
         """Lock the device."""
-        return _call_api_operation_that_requires_bridge(
-            self.get_lock_name(device_id),
-            "lock",
+        return self._call_api_op_requires_bridge_and_device_state(
+            device_id,
             self._api.lock_return_activities,
             self._august_gateway.access_token,
             device_id,
@@ -325,13 +325,29 @@ class AugustData:
 
     def unlock(self, device_id):
         """Unlock the device."""
-        return _call_api_operation_that_requires_bridge(
-            self.get_lock_name(device_id),
-            "unlock",
+        return self._call_api_op_requires_bridge_and_device_state(
+            device_id,
             self._api.unlock_return_activities,
             self._august_gateway.access_token,
             device_id,
         )
+
+    def _call_api_op_requires_bridge_and_device_state(
+        self, device_id, func, *args, **kwargs
+    ):
+        """Call an API that requires the bridge to be online and will change the device state."""
+        ret = None
+        try:
+            ret = func(*args, **kwargs)
+        except AugustApiHTTPError as err:
+            device_name = self.get_device_name(device_id)
+            if device_name is None:
+                device_name = f"DeviceID: {device_id}"
+            raise HomeAssistantError(f"{device_name}: {err}")
+
+        async_dispatcher_send(self._hass, f"{AUGUST_DEVICE_UPDATE}-{device_id}")
+
+        return ret
 
     def _filter_inoperative_locks(self):
         # Remove non-operative locks as there must
@@ -359,16 +375,3 @@ class AugustData:
                 operative_locks.append(lock)
 
         self._locks = operative_locks
-
-
-def _call_api_operation_that_requires_bridge(
-    device_name, operation_name, func, *args, **kwargs
-):
-    """Call an API that requires the bridge to be online."""
-    ret = None
-    try:
-        ret = func(*args, **kwargs)
-    except AugustApiHTTPError as err:
-        raise HomeAssistantError(device_name + ": " + str(err))
-
-    return ret

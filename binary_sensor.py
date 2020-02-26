@@ -7,17 +7,21 @@ from august.lock import LockDoorStatus
 from august.util import update_lock_detail_from_activity
 
 from homeassistant.components.binary_sensor import (
-    AUGUST_DEVICE_UPDATE,
     DEVICE_CLASS_CONNECTIVITY,
     DEVICE_CLASS_MOTION,
     DEVICE_CLASS_OCCUPANCY,
-    MIN_TIME_BETWEEN_DETAIL_UPDATES,
     BinarySensorDevice,
 )
 from homeassistant.core import callback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 
-from .const import DATA_AUGUST, DEFAULT_NAME, DOMAIN
+from .const import (
+    AUGUST_DEVICE_UPDATE,
+    DATA_AUGUST,
+    DEFAULT_NAME,
+    DOMAIN,
+    MIN_TIME_BETWEEN_DETAIL_UPDATES,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
