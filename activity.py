@@ -99,6 +99,7 @@ class ActivityStream:
 
     def _signal_device_updates(self, updated_device_ids):
         for device_id in updated_device_ids:
+            _LOGGER.debug(f"async_dispatcher_send (from activity stream): AUGUST_DEVICE_UPDATE-{device_id}")
             async_dispatcher_send(self._hass, f"{AUGUST_DEVICE_UPDATE}-{device_id}")
 
     def _process_newer_device_activities(self, activities):

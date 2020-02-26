@@ -345,6 +345,7 @@ class AugustData:
                 device_name = f"DeviceID: {device_id}"
             raise HomeAssistantError(f"{device_name}: {err}")
 
+        _LOGGER.debug(f"async_dispatcher_send (from api operation): AUGUST_DEVICE_UPDATE-{device_id}")
         async_dispatcher_send(self._hass, f"{AUGUST_DEVICE_UPDATE}-{device_id}")
 
         return ret
