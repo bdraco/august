@@ -48,7 +48,7 @@ class ActivityStream:
                 if (
                     latest_activity is not None
                     and latest_device_activities[activity_type].activity_start_time
-                    < latest_activity.activity_start_time
+                    <= latest_activity.activity_start_time
                 ):
                     continue
                 latest_activity = latest_device_activities[activity_type]
@@ -114,7 +114,7 @@ class ActivityStream:
             # Ignore activities that are older than the latest one
             if (
                 lastest_activity
-                and lastest_activity.activity_start_time > activity.activity_start_time
+                and lastest_activity.activity_start_time >= activity.activity_start_time
             ):
                 continue
 

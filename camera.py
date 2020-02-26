@@ -1,4 +1,5 @@
-"""Support for August camera."""
+"""Support for August doorbell camera."""
+
 from august.activity import ActivityType
 from august.util import update_doorbell_image_from_activity
 
