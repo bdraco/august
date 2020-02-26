@@ -11,7 +11,7 @@ import voluptuous as vol
 
 from homeassistant.config_entries import SOURCE_IMPORT, ConfigEntry
 from homeassistant.const import CONF_PASSWORD, CONF_TIMEOUT, CONF_USERNAME
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.dispatcher import async_dispatcher_send
@@ -133,6 +133,7 @@ async def async_setup_august(hass, config_entry, august_gateway):
     hass.data[DOMAIN][entry_id][DATA_AUGUST] = await hass.async_add_executor_job(
         AugustData, hass, august_gateway
     )
+    await hass.data[DOMAIN][entry_id][DATA_AUGUST].activity_stream.async_start()
 
     for component in AUGUST_COMPONENTS:
         hass.async_create_task(
@@ -178,7 +179,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
     """Unload a config entry."""
-    hass.data[DOMAIN][entry.entry_id][DATA_AUGUST].activity_stream.stop()
+    hass.data[DOMAIN][entry.entry_id][DATA_AUGUST].activity_stream.async_stop()
 
     unload_ok = all(
         await asyncio.gather(
@@ -279,7 +280,7 @@ class AugustData:
 
     def get_device_name(self, device_id):
         """Return doorbell or lock name as August has it stored."""
-        for device in self._devices + self._doorbells:
+        for device in self._locks + self._doorbells:
             if device.device_id == device_id:
                 return device.device_name
 
@@ -314,9 +315,17 @@ class AugustData:
         _LOGGER.debug("Completed retrieving %s detail", device_type)
         return detail_by_id
 
+    @callback
+    def async_signal_operation_changed_device_state(self, device_id):
+        """Signal a device update when an operation changes state."""
+        _LOGGER.debug(
+            f"async_dispatcher_send (from operation): AUGUST_DEVICE_UPDATE-{device_id}"
+        )
+        async_dispatcher_send(self._hass, f"{AUGUST_DEVICE_UPDATE}-{device_id}")
+
     def lock(self, device_id):
         """Lock the device."""
-        return self._call_api_op_requires_bridge_and_device_state(
+        return self._call_api_op_requires_bridge(
             device_id,
             self._api.lock_return_activities,
             self._august_gateway.access_token,
@@ -325,16 +334,14 @@ class AugustData:
 
     def unlock(self, device_id):
         """Unlock the device."""
-        return self._call_api_op_requires_bridge_and_device_state(
+        return self._call_api_op_requires_bridge(
             device_id,
             self._api.unlock_return_activities,
             self._august_gateway.access_token,
             device_id,
         )
 
-    def _call_api_op_requires_bridge_and_device_state(
-        self, device_id, func, *args, **kwargs
-    ):
+    def _call_api_op_requires_bridge(self, device_id, func, *args, **kwargs):
         """Call an API that requires the bridge to be online and will change the device state."""
         ret = None
         try:
@@ -344,11 +351,6 @@ class AugustData:
             if device_name is None:
                 device_name = f"DeviceID: {device_id}"
             raise HomeAssistantError(f"{device_name}: {err}")
-
-        _LOGGER.debug(
-            f"async_dispatcher_send (from api operation): AUGUST_DEVICE_UPDATE-{device_id}"
-        )
-        async_dispatcher_send(self._hass, f"{AUGUST_DEVICE_UPDATE}-{device_id}")
 
         return ret
 

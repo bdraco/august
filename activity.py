@@ -6,6 +6,7 @@ from requests import RequestException
 from homeassistant.core import callback
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.event import async_track_time_interval
+from homeassistant.util.dt import utcnow
 
 from .const import ACTIVITY_UPDATE_INTERVAL, AUGUST_DEVICE_UPDATE
 
@@ -26,12 +27,20 @@ class ActivityStream:
         self._house_ids = house_ids
         self._latest_activities_by_id_type = {}
         self._last_update_time = None
+        self._abort_async_track_time_interval = None
+
+    async def async_start(self):
+        """Start fetching updates from the activity stream."""
+        await self._async_update(utcnow)
         self._abort_async_track_time_interval = async_track_time_interval(
-            hass, self._async_update, ACTIVITY_UPDATE_INTERVAL
+            self._hass, self._async_update, ACTIVITY_UPDATE_INTERVAL
         )
 
-    def stop(self):
+    @callback
+    def async_stop(self):
         """Stop fetching updates from the activity stream."""
+        if self._abort_async_track_time_interval is None:
+            return
         self._abort_async_track_time_interval()
 
     @callback
