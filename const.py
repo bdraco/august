@@ -22,16 +22,14 @@ DATA_AUGUST = "data_august"
 DEFAULT_NAME = "August"
 DOMAIN = "august"
 
-# Limit battery, online, and hardware updates to 1800 seconds
+# Limit battery, online, and hardware updates to hourly
 # in order to reduce the number of api requests and
 # avoid hitting rate limits
-MIN_TIME_BETWEEN_DETAIL_UPDATES = timedelta(seconds=1800)
+MIN_TIME_BETWEEN_DETAIL_UPDATES = timedelta(hours=1)
 
 # Activity needs to be checked more frequently as the
 # doorbell motion and rings are included here
 ACTIVITY_UPDATE_INTERVAL = timedelta(seconds=10)
-
-DEFAULT_SCAN_INTERVAL = timedelta(seconds=10)
 
 LOGIN_METHODS = ["phone", "email"]
 

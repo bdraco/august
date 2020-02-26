@@ -15,17 +15,13 @@ from homeassistant.components.binary_sensor import (
 from homeassistant.core import callback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 
-from .const import (
-    AUGUST_DEVICE_UPDATE,
-    DATA_AUGUST,
-    DEFAULT_NAME,
-    DOMAIN,
-    MIN_TIME_BETWEEN_DETAIL_UPDATES,
-)
+from .const import AUGUST_DEVICE_UPDATE, DATA_AUGUST, DEFAULT_NAME, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
-SCAN_INTERVAL = MIN_TIME_BETWEEN_DETAIL_UPDATES
+MIN_TIME_TO_DECLARE_MOTION_DETECTION = 60
+
+SCAN_INTERVAL = timedelta(seconds=MIN_TIME_TO_DECLARE_MOTION_DETECTION)
 
 
 async def _async_retrieve_online_state(data, detail):
@@ -57,7 +53,9 @@ async def _async_activity_time_based_state(data, device_id, activity_types):
 
     if latest is not None:
         start = latest.activity_start_time
-        end = latest.activity_end_time + timedelta(seconds=45)
+        end = latest.activity_end_time + timedelta(
+            seconds=MIN_TIME_TO_DECLARE_MOTION_DETECTION
+        )
         return start <= datetime.now() <= end
     return None
 
