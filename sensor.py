@@ -98,6 +98,7 @@ class AugustBatterySensor(AugustEntityMixin, Entity):
 
     def __init__(self, data, sensor_type, device):
         """Initialize the sensor."""
+        super().__init__(data, device)
         self._data = data
         self._sensor_type = sensor_type
         self._device = device

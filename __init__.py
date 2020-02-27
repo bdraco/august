@@ -130,8 +130,6 @@ async def async_setup_august(hass, config_entry, august_gateway):
     hass.data[DOMAIN][entry_id][DATA_AUGUST] = await hass.async_add_executor_job(
         AugustData, hass, august_gateway
     )
-    await hass.data[DOMAIN][entry_id][DATA_AUGUST].activity_stream.async_start()
-
     for component in AUGUST_COMPONENTS:
         hass.async_create_task(
             hass.config_entries.async_forward_entry_setup(config_entry, component)
@@ -176,8 +174,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
     """Unload a config entry."""
-    hass.data[DOMAIN][entry.entry_id][DATA_AUGUST].activity_stream.async_stop()
-
     unload_ok = all(
         await asyncio.gather(
             *[
@@ -208,13 +204,13 @@ class AugustData(AugustSubscriberMixin):
         doorbells = self._api.get_doorbells(self._august_gateway.access_token) or []
 
         self._doorbells_by_id = dict((device.device_id, device) for device in doorbells)
-        self._locks_by_id = dict((device.id, device) for device in locks)
+        self._locks_by_id = dict((device.device_id, device) for device in locks)
         self._house_ids = set(
-            device.device_id for device in itertools.chain(locks, doorbells)
+            device.house_id for device in itertools.chain(locks, doorbells)
         )
 
         self._refresh_device_detail_by_ids(
-            [self._doorbells_by_id.keys(), self._locks_by_id.keys()]
+            [device.device_id for device in itertools.chain(locks, doorbells)]
         )
         self._remove_inoperative_locks()
         self._remove_inoperative_doorbells()
@@ -235,10 +231,10 @@ class AugustData(AugustSubscriberMixin):
 
     def get_device_detail(self, device_id):
         """Return the py-august LockDetail or DoorbellDetail object for a device."""
-        return self._device_detail_by_id.get(device_id, None)
+        return self._device_detail_by_id[device_id]
 
     def _refresh(self, time):
-        self._refresh_device_detail_by_ids(self._subscriptions.keys())
+        self._refresh_device_detail_by_ids([list(self._subscriptions.keys())])
 
     def _refresh_device_detail_by_ids(self, device_ids_list):
         for device_id in device_ids_list:
@@ -250,11 +246,16 @@ class AugustData(AugustSubscriberMixin):
                 self._update_device_detail(
                     self._doorbells_by_id[device_id], self._api.get_doorbell_detail
                 )
+            _LOGGER.debug(
+                "signal_device_id_update (from detail updates): %s", device_id,
+            )
             self.signal_device_id_update(device_id)
 
     def _update_device_detail(self, device, api_call):
         _LOGGER.debug(
-            "Started retrieving %s detail for %", device.device_type, device.device_id
+            "Started retrieving detail for %s (%s)",
+            device.device_name,
+            device.device_id,
         )
 
         try:
@@ -269,7 +270,9 @@ class AugustData(AugustSubscriberMixin):
                 ex,
             )
         _LOGGER.debug(
-            "Completed retrieving %s detail for %", device.device_type, device.device_id
+            "Completed retrieving detail for %s (%s)",
+            device.device_name,
+            device.device_id,
         )
 
     def _get_device_name(self, device_id):
@@ -314,7 +317,7 @@ class AugustData(AugustSubscriberMixin):
         for doorbell in self.doorbells:
             device_id = doorbell.device_id
             doorbell_is_operative = False
-            doorbell_detail = self.get_device_detail(device_id)
+            doorbell_detail = self._device_detail_by_id.get(device_id)
             if doorbell_detail is None:
                 _LOGGER.info(
                     "The doorbell %s could not be setup because the system could not fetch details about the doorbell.",
@@ -334,7 +337,7 @@ class AugustData(AugustSubscriberMixin):
         for lock in self.locks:
             device_id = lock.device_id
             lock_is_operative = False
-            lock_detail = self.get_device_detail(device_id)
+            lock_detail = self._device_detail_by_id.get(device_id)
             if lock_detail is None:
                 _LOGGER.info(
                     "The lock %s could not be setup because the system could not fetch details about the lock.",

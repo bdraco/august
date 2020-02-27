@@ -89,7 +89,7 @@ class AugustCamera(AugustEntityMixin, Camera):
 
     def _camera_image(self):
         """Return bytes of camera image."""
-        return self._detail.get_device_image(timeout=self._timeout)
+        return self._detail.get_doorbell_image(timeout=self._timeout)
 
     @property
     def unique_id(self) -> str:
