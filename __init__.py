@@ -277,10 +277,10 @@ class AugustData(AugustSubscriberMixin):
 
     def _get_device_name(self, device_id):
         """Return doorbell or lock name as August has it stored."""
-        if self._locks.get(device_id):
-            return self._locks[device_id].device_name
-        if self._doorbells.get(device_id):
-            return self._doorbells[device_id].device_name
+        if self._locks_by_id.get(device_id):
+            return self._locks_by_id[device_id].device_name
+        if self._doorbells_by_id.get(device_id):
+            return self._doorbells_by_id[device_id].device_name
 
     def lock(self, device_id):
         """Lock the device."""
@@ -306,7 +306,7 @@ class AugustData(AugustSubscriberMixin):
         try:
             ret = func(*args, **kwargs)
         except AugustApiHTTPError as err:
-            device_name = self.get_device_name(device_id)
+            device_name = self._get_device_name(device_id)
             if device_name is None:
                 device_name = f"DeviceID: {device_id}"
             raise HomeAssistantError(f"{device_name}: {err}")
@@ -314,7 +314,8 @@ class AugustData(AugustSubscriberMixin):
         return ret
 
     def _remove_inoperative_doorbells(self):
-        for doorbell in self.doorbells:
+        doorbells = list(self.doorbells)
+        for doorbell in doorbells:
             device_id = doorbell.device_id
             doorbell_is_operative = False
             doorbell_detail = self._device_detail_by_id.get(device_id)
@@ -326,15 +327,17 @@ class AugustData(AugustSubscriberMixin):
             else:
                 doorbell_is_operative = True
 
-        if not doorbell_is_operative:
-            del self._doorbells[device_id]
-            del self._device_detail_by_id[device_id]
+            if not doorbell_is_operative:
+                del self._doorbells_by_id[device_id]
+                del self._device_detail_by_id[device_id]
 
     def _remove_inoperative_locks(self):
         # Remove non-operative locks as there must
         # be a bridge (August Connect) for them to
         # be usable
-        for lock in self.locks:
+        locks = list(self.locks)
+
+        for lock in locks:
             device_id = lock.device_id
             lock_is_operative = False
             lock_detail = self._device_detail_by_id.get(device_id)
@@ -357,5 +360,5 @@ class AugustData(AugustSubscriberMixin):
                 lock_is_operative = True
 
             if not lock_is_operative:
-                del self._locks[device_id]
+                del self._locks_by_id[device_id]
                 del self._device_detail_by_id[device_id]
