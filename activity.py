@@ -58,9 +58,9 @@ class ActivityStream(AugustSubscriberMixin):
 
         # This is the only place we refresh the api token
         await self._august_gateway.async_refresh_access_token_if_needed()
-        await self._update_device_activities(time)
+        await self._async_update_device_activities(time)
 
-    async def _update_device_activities(self, time):
+    async def _async_update_device_activities(self, time):
         _LOGGER.debug("Start retrieving device activities")
 
         limit = (

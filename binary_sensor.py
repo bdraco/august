@@ -77,14 +77,6 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
 
     for door in data.locks:
         detail = data.get_device_detail(door.device_id)
-
-        if not detail:
-            _LOGGER.debug(
-                "Not adding sensor class door for lock %s because detail was not available.",
-                door.device_name,
-            )
-            continue
-
         if not detail.doorsense:
             _LOGGER.debug(
                 "Not adding sensor class door for lock %s because it does not have doorsense.",

@@ -214,6 +214,11 @@ class AugustData(AugustSubscriberMixin):
         self._refresh_device_detail_by_ids(
             [device.device_id for device in itertools.chain(locks, doorbells)]
         )
+
+        # We remove all devices that we are missing
+        # detail as we cannot determine if they are usable.
+        # This also allows us to avoid checking for
+        # detail being None all over the place
         self._remove_inoperative_locks()
         self._remove_inoperative_doorbells()
 
