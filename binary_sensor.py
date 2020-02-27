@@ -214,9 +214,8 @@ class AugustDoorbellBinarySensor(AugustEntityMixin, BinarySensorDevice):
         @callback
         def _scheduled_update(now):
             """Timer callback for sensor update."""
-            _LOGGER.debug("%s: executing scheduled update", self.entity_id)
-            self._update_from_data()
             self._check_for_off_update_listener = None
+            self._update_from_data()
 
         self._check_for_off_update_listener = async_track_point_in_utc_time(
             self.hass, _scheduled_update, utcnow() + TIME_TO_DECLARE_DETECTION
@@ -225,6 +224,7 @@ class AugustDoorbellBinarySensor(AugustEntityMixin, BinarySensorDevice):
     def _cancel_any_pending_updates(self):
         """Cancel any updates to recheck a sensor to see if it is ready to turn off."""
         if self._check_for_off_update_listener:
+            _LOGGER.debug("%s: canceled pending update", self.entity_id)
             self._check_for_off_update_listener()
             self._check_for_off_update_listener = None
 
