@@ -9,12 +9,10 @@ from homeassistant.components.lock import LockDevice
 from homeassistant.const import ATTR_BATTERY_LEVEL
 from homeassistant.core import callback
 
-from .const import DATA_AUGUST, DOMAIN, MIN_TIME_BETWEEN_DETAIL_UPDATES
+from .const import DATA_AUGUST, DOMAIN
 from .entity import AugustEntityMixin
 
 _LOGGER = logging.getLogger(__name__)
-
-SCAN_INTERVAL = MIN_TIME_BETWEEN_DETAIL_UPDATES
 
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
@@ -55,7 +53,6 @@ class AugustLock(AugustEntityMixin, LockDevice):
         )
         detail = self._detail
         for lock_activity in activities:
-            _LOGGER.debug("update_lock_detail_from_activity: %s", self._device_id)
             update_lock_detail_from_activity(detail, lock_activity)
 
         if self._update_lock_status_from_detail():

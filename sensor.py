@@ -5,7 +5,7 @@ from homeassistant.components.sensor import DEVICE_CLASS_BATTERY
 from homeassistant.core import callback
 from homeassistant.helpers.entity import Entity
 
-from .const import DATA_AUGUST, DOMAIN, MIN_TIME_BETWEEN_DETAIL_UPDATES
+from .const import DATA_AUGUST, DOMAIN
 from .entity import AugustEntityMixin
 
 BATTERY_LEVEL_FULL = "Full"
@@ -13,8 +13,6 @@ BATTERY_LEVEL_MEDIUM = "Medium"
 BATTERY_LEVEL_LOW = "Low"
 
 _LOGGER = logging.getLogger(__name__)
-
-SCAN_INTERVAL = MIN_TIME_BETWEEN_DETAIL_UPDATES
 
 
 def _retrieve_device_battery_state(detail):

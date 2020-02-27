@@ -16,14 +16,12 @@ from homeassistant.core import callback
 from homeassistant.helpers.event import async_track_point_in_utc_time
 from homeassistant.util.dt import utcnow
 
-from .const import DATA_AUGUST, DOMAIN, MIN_TIME_BETWEEN_DETAIL_UPDATES
+from .const import DATA_AUGUST, DOMAIN
 from .entity import AugustEntityMixin
 
 _LOGGER = logging.getLogger(__name__)
 
 TIME_TO_DECLARE_DETECTION = timedelta(seconds=60)
-
-SCAN_INTERVAL = MIN_TIME_BETWEEN_DETAIL_UPDATES
 
 
 def _retrieve_online_state(data, detail):

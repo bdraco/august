@@ -6,16 +6,8 @@ from august.util import update_doorbell_image_from_activity
 from homeassistant.components.camera import Camera
 from homeassistant.core import callback
 
-from .const import (
-    DATA_AUGUST,
-    DEFAULT_NAME,
-    DEFAULT_TIMEOUT,
-    DOMAIN,
-    MIN_TIME_BETWEEN_DETAIL_UPDATES,
-)
+from .const import DATA_AUGUST, DEFAULT_NAME, DEFAULT_TIMEOUT, DOMAIN
 from .entity import AugustEntityMixin
-
-SCAN_INTERVAL = MIN_TIME_BETWEEN_DETAIL_UPDATES
 
 
 async def async_setup_entry(hass, config_entry, async_add_entities):

@@ -37,8 +37,6 @@ _LOGGER = logging.getLogger(__name__)
 
 TWO_FA_REVALIDATE = "verify_configurator"
 
-DEFAULT_SCAN_INTERVAL = MIN_TIME_BETWEEN_DETAIL_UPDATES
-
 CONFIG_SCHEMA = vol.Schema(
     {
         DOMAIN: vol.Schema(
