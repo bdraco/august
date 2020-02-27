@@ -35,6 +35,15 @@ class AugustSubscriberMixin:
             self._unsub_interval()
             self._unsub_interval = None
 
+    @callback
+    def async_signal_device_id_update(self, device_id):
+        """Call the callbacks for a device_id."""
+        if not self._subscriptions.get(device_id):
+            return
+
+        for update_callback in self._subscriptions[device_id]:
+            update_callback()
+
     def signal_device_id_update(self, device_id):
         """Call the callbacks for a device_id."""
         if not self._subscriptions.get(device_id):
