@@ -4,6 +4,8 @@ import logging
 
 from requests import RequestException
 
+from homeassistant.util.dt import utcnow
+
 from .const import ACTIVITY_UPDATE_INTERVAL
 from .subscriber import AugustSubscriberMixin
 
@@ -26,6 +28,10 @@ class ActivityStream(AugustSubscriberMixin):
         self._latest_activities_by_id_type = {}
         self._last_update_time = None
         self._abort_async_track_time_interval = None
+
+    async def async_setup(self):
+        """Token refresh check and catch up the activity stream."""
+        await self._refresh(utcnow)
 
     def get_latest_device_activity(self, device_id, activity_types):
         """Return latest activity that is one of the acitivty_types."""

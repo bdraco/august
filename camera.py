@@ -44,7 +44,7 @@ class AugustCamera(AugustEntityMixin, Camera):
     @property
     def name(self):
         """Return the name of this device."""
-        return f"{self._device.device_name} Camera"
+        return f"{self._device.device_name} Doorbell Camera"
 
     @property
     def is_recording(self):

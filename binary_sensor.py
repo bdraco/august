@@ -154,6 +154,7 @@ class AugustDoorBinarySensor(AugustEntityMixin, BinarySensorDevice):
         self._available = detail.bridge_is_online
 
         self._state = lock_door_state == LockDoorStatus.OPEN
+        self.async_write_ha_state()
 
     @property
     def unique_id(self) -> str:

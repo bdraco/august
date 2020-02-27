@@ -55,6 +55,7 @@ class AugustLock(AugustEntityMixin, LockDevice):
         )
         detail = self._detail
         for lock_activity in activities:
+            _LOGGER.debug("update_lock_detail_from_activity: %s", self._device_id)
             update_lock_detail_from_activity(detail, lock_activity)
 
         if self._update_lock_status_from_detail():

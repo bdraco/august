@@ -130,6 +130,8 @@ async def async_setup_august(hass, config_entry, august_gateway):
     hass.data[DOMAIN][entry_id][DATA_AUGUST] = await hass.async_add_executor_job(
         AugustData, hass, august_gateway
     )
+    await hass.data[DOMAIN][entry_id][DATA_AUGUST].activity_stream.async_setup()
+
     for component in AUGUST_COMPONENTS:
         hass.async_create_task(
             hass.config_entries.async_forward_entry_setup(config_entry, component)
