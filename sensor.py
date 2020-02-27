@@ -19,17 +19,11 @@ SCAN_INTERVAL = MIN_TIME_BETWEEN_DETAIL_UPDATES
 
 def _retrieve_device_battery_state(detail):
     """Get the latest state of the sensor."""
-    if detail is None:
-        return None
-
     return detail.battery_level
 
 
 def _retrieve_linked_keypad_battery_state(detail):
     """Get the latest state of the sensor."""
-    if detail is None:
-        return None
-
     if detail.keypad is None:
         return None
 

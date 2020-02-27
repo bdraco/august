@@ -58,16 +58,13 @@ class AugustLock(AugustEntityMixin, LockDevice):
             update_lock_detail_from_activity(detail, lock_activity)
 
         if self._update_lock_status_from_detail():
+            _LOGGER.debug("signal_device_id_update (from lock operation): %s", device_id)
             self._data.signal_device_id_update(self._device_id)
 
     def _update_lock_status_from_detail(self):
         detail = self._detail
-        lock_status = None
-        self._available = False
-
-        if detail is not None:
-            lock_status = detail.lock_status
-            self._available = detail.bridge_is_online
+        lock_status = detail.lock_status
+        self._available = detail.bridge_is_online
 
         if self._lock_status != lock_status:
             self._lock_status = lock_status
@@ -84,8 +81,7 @@ class AugustLock(AugustEntityMixin, LockDevice):
 
         if lock_activity is not None:
             self._changed_by = lock_activity.operated_by
-            if lock_detail is not None:
-                update_lock_detail_from_activity(lock_detail, lock_activity)
+            update_lock_detail_from_activity(lock_detail, lock_activity)
 
         self._update_lock_status_from_detail()
         self.async_write_ha_state()
@@ -115,9 +111,6 @@ class AugustLock(AugustEntityMixin, LockDevice):
     @property
     def device_state_attributes(self):
         """Return the device specific state attributes."""
-        if self._detail is None:
-            return None
-
         attributes = {ATTR_BATTERY_LEVEL: self._detail.battery_level}
 
         if self._detail.keypad is not None:

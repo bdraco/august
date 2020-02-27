@@ -150,11 +150,8 @@ class AugustDoorBinarySensor(AugustEntityMixin, BinarySensorDevice):
         if door_activity is not None:
             update_lock_detail_from_activity(detail, door_activity)
 
-        lock_door_state = None
-        self._available = False
-        if detail is not None:
-            lock_door_state = detail.door_state
-            self._available = detail.bridge_is_online
+        lock_door_state = detail.door_state
+        self._available = detail.bridge_is_online
 
         self._state = lock_door_state == LockDoorStatus.OPEN
 
@@ -209,15 +206,12 @@ class AugustDoorbellBinarySensor(AugustEntityMixin, BinarySensorDevice):
         if self.device_class == DEVICE_CLASS_CONNECTIVITY:
             self._available = True
         else:
-            self._available = detail is not None and (
-                detail.is_online or detail.is_standby
-            )
+            self._available = detail.is_online or detail.is_standby
 
         self._state = None
-        if detail is not None:
-            self._state = state_provider(self._data, detail)
-            if self._state and self.device_class != DEVICE_CLASS_CONNECTIVITY:
-                self._schedule_update_to_recheck_turn_off_sensor()
+        self._state = state_provider(self._data, detail)
+        if self._state and self.device_class != DEVICE_CLASS_CONNECTIVITY:
+            self._schedule_update_to_recheck_turn_off_sensor()
 
         self.async_write_ha_state()
 
