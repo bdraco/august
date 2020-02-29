@@ -2,7 +2,6 @@
 import logging
 
 from homeassistant.components.sensor import DEVICE_CLASS_BATTERY
-from homeassistant.const import UNIT_PERCENTAGE
 from homeassistant.core import callback
 from homeassistant.helpers.entity import Entity
 
@@ -99,7 +98,7 @@ class AugustBatterySensor(AugustEntityMixin, Entity):
     @property
     def unit_of_measurement(self):
         """Return the unit of measurement."""
-        return UNIT_PERCENTAGE
+        return "%"
 
     @property
     def device_class(self):
