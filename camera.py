@@ -74,14 +74,8 @@ class AugustCamera(AugustEntityMixin, Camera):
 
         if self._image_url is not self._detail.image_url:
             self._image_url = self._detail.image_url
-            self._image_content = await self.hass.async_add_executor_job(
-                self._camera_image
-            )
+            self._image_content = await self._detail.async_get_doorbell_image(aiohttp_client.async_get_clientsession(hass),timeout=self._timeout)
         return self._image_content
-
-    def _camera_image(self):
-        """Return bytes of camera image."""
-        return self._detail.get_doorbell_image(timeout=self._timeout)
 
     @property
     def unique_id(self) -> str:

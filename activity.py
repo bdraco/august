@@ -2,7 +2,7 @@
 from functools import partial
 import logging
 
-from requests import RequestException
+from requests import ClientError
 
 from homeassistant.util.dt import utcnow
 
@@ -53,7 +53,7 @@ class ActivityStream(AugustSubscriberMixin):
 
         return latest_activity
 
-    async def _refresh(self, time):
+    async def _async_refresh(self, time):
         """Update the activity stream from August."""
 
         # This is the only place we refresh the api token
@@ -72,15 +72,8 @@ class ActivityStream(AugustSubscriberMixin):
         for house_id in self._house_ids:
             _LOGGER.debug("Updating device activity for house id %s", house_id)
             try:
-                activities = await self._hass.async_add_executor_job(
-                    partial(
-                        self._api.get_house_activities,
-                        self._august_gateway.access_token,
-                        house_id,
-                        limit=limit,
-                    )
-                )
-            except RequestException as ex:
+                activities = await self._api.async_get_house_activities(self._august_gateway.access_token,house_id,limit=limit)
+            except ClientError as ex:
                 _LOGGER.error(
                     "Request error trying to retrieve activity for house id %s: %s",
                     house_id,
