@@ -1,8 +1,7 @@
 """Consume the august activity stream."""
-from functools import partial
 import logging
 
-from requests import ClientError
+from aiohttp import ClientError
 
 from homeassistant.util.dt import utcnow
 
@@ -31,7 +30,7 @@ class ActivityStream(AugustSubscriberMixin):
 
     async def async_setup(self):
         """Token refresh check and catch up the activity stream."""
-        await self._refresh(utcnow)
+        await self._async_refresh(utcnow)
 
     def get_latest_device_activity(self, device_id, activity_types):
         """Return latest activity that is one of the acitivty_types."""
@@ -72,7 +71,9 @@ class ActivityStream(AugustSubscriberMixin):
         for house_id in self._house_ids:
             _LOGGER.debug("Updating device activity for house id %s", house_id)
             try:
-                activities = await self._api.async_get_house_activities(self._august_gateway.access_token,house_id,limit=limit)
+                activities = await self._api.async_get_house_activities(
+                    self._august_gateway.access_token, house_id, limit=limit
+                )
             except ClientError as ex:
                 _LOGGER.error(
                     "Request error trying to retrieve activity for house id %s: %s",

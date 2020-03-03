@@ -3,15 +3,12 @@
 import asyncio
 import logging
 
+from aiohttp import ClientError
 from august.api_async import ApiAsync
 from august.authenticator_async import AuthenticationState, AuthenticatorAsync
-from aiohttp import ClientError, ClientSession
-
-
-from homeassistant.helpers import aiohttp_client
 
 from homeassistant.const import CONF_PASSWORD, CONF_TIMEOUT, CONF_USERNAME
-from homeassistant.core import callback
+from homeassistant.helpers import aiohttp_client
 
 from .const import (
     CONF_ACCESS_TOKEN_CACHE_FILE,
@@ -69,8 +66,7 @@ class AugustGateway:
             CONF_ACCESS_TOKEN_CACHE_FILE: self._config[CONF_ACCESS_TOKEN_CACHE_FILE],
         }
 
-    @callback
-    def async_setup(self, conf):
+    async def async_setup(self, conf):
         """Create the api and authenticator objects."""
         if conf.get(VERIFICATION_CODE_KEY):
             return
@@ -124,7 +120,9 @@ class AugustGateway:
         """Refresh the august access token if needed."""
         if self.authenticator.should_refresh():
             async with self._token_refresh_lock:
-                refreshed_authentication = await self.authenticator.async_refresh_access_token(force=False)
+                refreshed_authentication = await self.authenticator.async_refresh_access_token(
+                    force=False
+                )
                 _LOGGER.info(
                     "Refreshed august access token. The old token expired at %s, and the new token expires at %s",
                     self.authentication.access_token_expires,
