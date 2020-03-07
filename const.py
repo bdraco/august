@@ -24,7 +24,9 @@ OPERATION_METHOD_REMOTE = "remote"
 OPERATION_METHOD_KEYPAD = "keypad"
 OPERATION_METHOD_MOBILE_DEVICE = "mobile"
 
-
+ATTR_OPERATION_METHOD = "method"
+ATTR_OPERATION_REMOTE = "remote"
+ATTR_OPERATION_KEYPAD = "keypad"
 
 # Limit battery, online, and hardware updates to hourly
 # in order to reduce the number of api requests and

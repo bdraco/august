@@ -9,7 +9,8 @@ from homeassistant.const import ATTR_TIME, ATTR_ENTITY_PICTURE
 from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.restore_state import RestoreEntity
 
-from .const import DATA_AUGUST, DOMAIN, OPERATION_METHOD_REMOTE, OPERATION_METHOD_KEYPAD, OPERATION_METHOD_PHONE
+from .const import DATA_AUGUST, DOMAIN, OPERATION_METHOD_REMOTE, OPERATION_METHOD_KEYPAD, OPERATION_METHOD_MOBILE_DEVICE, ATTR_OPERATION_METHOD, ATTR_OPERATION_REMOTE , ATTR_OPERATION_KEYPAD 
+
 
 
 from .entity import AugustEntityMixin
@@ -141,13 +142,13 @@ class AugustOperatorSensor(AugustEntityMixin, RestoreEntity, Entity):
         attributes = {}
 
         if self._operated_remote is not None:
-            attributes["remote"] = self._operated_remote
+            attributes[ATTR_OPERATION_REMOTE] = self._operated_remote
         if self._operated_keypad is not None:
-            attributes["keypad"] = self._operated_keypad
+            attributes[ATTR_OPERATION_KEYPAD] = self._operated_keypad
         if self._operated_time is not None:
             attributes[ATTR_TIME] = self._operated_time
         
-        attributes["method"] = OPERATION_METHOD_REMOTE if self._operated_remote else OPERATION_METHOD_KEYPAD if self._operated_keypad else OPERATION_METHOD_MOBILE_DEVICE
+        attributes[ATTR_OPERATION_METHOD] = OPERATION_METHOD_REMOTE if self._operated_remote else OPERATION_METHOD_KEYPAD if self._operated_keypad else OPERATION_METHOD_MOBILE_DEVICE
         return attributes
 
     async def async_added_to_hass(self):
@@ -161,12 +162,12 @@ class AugustOperatorSensor(AugustEntityMixin, RestoreEntity, Entity):
         self._state = last_state.state
         if ATTR_ENTITY_PICTURE in last_state.attributes:
             self._entity_picture = last_state.attributes[ATTR_ENTITY_PICTURE]
-        if "remote" in last_state.attributes:
-            self._operated_remote = last_state.attributes["remote"]
-        if "keypad" in last_state.attributes:
-            self._operated_keypad = last_state.attributes["keypad"]
+        if ATTR_OPERATION_REMOTE in last_state.attributes:
+            self._operated_remote = last_state.attributes[ATTR_OPERATION_REMOTE]
+        if ATTR_OPERATION_KEYPAD in last_state.attributes:
+            self._operated_keypad = last_state.attributes[ATTR_OPERATION_KEYPAD]
         if ATTR_TIME in last_state.attributes:
-            self._operated_time = last_state.attributes["time"]
+            self._operated_time = last_state.attributes[ATTR_TIME]
 
 
     @property
