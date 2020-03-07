@@ -4,15 +4,21 @@ import logging
 from august.activity import ActivityType
 
 from homeassistant.components.sensor import DEVICE_CLASS_BATTERY
+from homeassistant.const import ATTR_ENTITY_PICTURE, ATTR_TIME
 from homeassistant.core import callback
-from homeassistant.const import ATTR_TIME, ATTR_ENTITY_PICTURE
 from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.restore_state import RestoreEntity
 
-from .const import DATA_AUGUST, DOMAIN, OPERATION_METHOD_REMOTE, OPERATION_METHOD_KEYPAD, OPERATION_METHOD_MOBILE_DEVICE, ATTR_OPERATION_METHOD, ATTR_OPERATION_REMOTE , ATTR_OPERATION_KEYPAD 
-
-
-
+from .const import (
+    ATTR_OPERATION_KEYPAD,
+    ATTR_OPERATION_METHOD,
+    ATTR_OPERATION_REMOTE,
+    DATA_AUGUST,
+    DOMAIN,
+    OPERATION_METHOD_KEYPAD,
+    OPERATION_METHOD_MOBILE_DEVICE,
+    OPERATION_METHOD_REMOTE,
+)
 from .entity import AugustEntityMixin
 
 _LOGGER = logging.getLogger(__name__)
@@ -134,7 +140,13 @@ class AugustOperatorSensor(AugustEntityMixin, RestoreEntity, Entity):
         """Return the unit of measurement."""
         if self._operated_remote is None:
             return
-        return OPERATION_METHOD_REMOTE if self._operated_remote else OPERATION_METHOD_KEYPAD if self._operated_keypad else OPERATION_METHOD_MOBILE_DEVICE
+        return (
+            OPERATION_METHOD_REMOTE
+            if self._operated_remote
+            else OPERATION_METHOD_KEYPAD
+            if self._operated_keypad
+            else OPERATION_METHOD_MOBILE_DEVICE
+        )
 
     @property
     def device_state_attributes(self):
@@ -147,8 +159,14 @@ class AugustOperatorSensor(AugustEntityMixin, RestoreEntity, Entity):
             attributes[ATTR_OPERATION_KEYPAD] = self._operated_keypad
         if self._operated_time is not None:
             attributes[ATTR_TIME] = self._operated_time
-        
-        attributes[ATTR_OPERATION_METHOD] = OPERATION_METHOD_REMOTE if self._operated_remote else OPERATION_METHOD_KEYPAD if self._operated_keypad else OPERATION_METHOD_MOBILE_DEVICE
+
+        attributes[ATTR_OPERATION_METHOD] = (
+            OPERATION_METHOD_REMOTE
+            if self._operated_remote
+            else OPERATION_METHOD_KEYPAD
+            if self._operated_keypad
+            else OPERATION_METHOD_MOBILE_DEVICE
+        )
         return attributes
 
     async def async_added_to_hass(self):
@@ -169,7 +187,6 @@ class AugustOperatorSensor(AugustEntityMixin, RestoreEntity, Entity):
         if ATTR_TIME in last_state.attributes:
             self._operated_time = last_state.attributes[ATTR_TIME]
 
-
     @property
     def entity_picture(self):
         """Return the entity picture to use in the frontend, if any."""
@@ -179,6 +196,7 @@ class AugustOperatorSensor(AugustEntityMixin, RestoreEntity, Entity):
     def unique_id(self) -> str:
         """Get the unique id of the device sensor."""
         return f"{self._device_id}_lock_operator"
+
 
 class AugustBatterySensor(AugustEntityMixin, Entity):
     """Representation of an August sensor."""

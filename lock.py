@@ -80,7 +80,7 @@ class AugustLock(AugustEntityMixin, RestoreEntity, LockDevice):
 
         if lock_activity is not None:
             update_lock_detail_from_activity(self._detail, lock_activity)
-            
+
             self._changed_by = lock_activity.operated_by
             self._operated_remote = lock_activity.operated_remote
             self._operated_keypad = lock_activity.operated_keypad
@@ -122,7 +122,7 @@ class AugustLock(AugustEntityMixin, RestoreEntity, LockDevice):
         # TODO: RESTORE ON RESTART
         if self._operated_keypad is not None:
             attributes["operated_keypad"] = self._operated_keypad
- 
+
         return attributes
 
     async def async_added_to_hass(self):
