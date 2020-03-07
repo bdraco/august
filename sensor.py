@@ -109,7 +109,7 @@ class AugustOperatorSensor(AugustEntityMixin, RestoreEntity, Entity):
     @property
     def name(self):
         """Return the name of the sensor."""
-        return f"{self._device.device_name} Operation"
+        return f"{self._device.device_name} Operator"
 
     @callback
     def _update_from_data(self):
