@@ -7,6 +7,7 @@ from homeassistant.components.sensor import DEVICE_CLASS_BATTERY
 from homeassistant.core import callback
 from homeassistant.const import ATTR_TIME, ATTR_ENTITY_PICTURE
 from homeassistant.helpers.entity import Entity
+from homeassistant.helpers.restore_state import RestoreEntity
 
 from .const import DATA_AUGUST, DOMAIN
 from .entity import AugustEntityMixin
@@ -80,7 +81,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     async_add_entities(devices, True)
 
 
-class AugustOperatorSensor(AugustEntityMixin, Entity):
+class AugustOperatorSensor(AugustEntityMixin, RestoreEntity, Entity):
     """Representation of an August lock operation sensor."""
 
     def __init__(self, data, device):
