@@ -83,9 +83,9 @@ class AugustLock(AugustEntityMixin, RestoreEntity, LockDevice):
             update_lock_detail_from_activity(self._detail, lock_activity)
             
             self._changed_by = lock_activity.operated_by
-	    self._operated_remote = lock_activity.operated_remote
-	    self._operated_keypad = lock_activity.operated_keypad
-	    self._entity_picture = lock_activity.operator_thumbnail_url
+            self._operated_remote = lock_activity.operated_remote
+            self._operated_keypad = lock_activity.operated_keypad
+            self._entity_picture = lock_activity.operator_thumbnail_url
 
         self._update_lock_status_from_detail()
 
