@@ -4,7 +4,7 @@ import logging
 from august.activity import ActivityType
 
 from homeassistant.components.sensor import DEVICE_CLASS_BATTERY
-from homeassistant.const import ATTR_ENTITY_PICTURE, ATTR_TIME
+from homeassistant.const import ATTR_ENTITY_PICTURE
 from homeassistant.core import callback
 from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.restore_state import RestoreEntity
@@ -15,11 +15,7 @@ from .const import (
     ATTR_OPERATION_METHOD,
     ATTR_OPERATION_REMOTE,
     DATA_AUGUST,
-    DOMAIN,
-    OPERATION_METHOD_KEYPAD,
-    OPERATION_METHOD_MOBILE_DEVICE,
-    OPERATION_METHOD_REMOTE,
-    OPERATION_METHOD_AUTORELOCK
+    DOMAIN
 )
 from .entity import AugustEntityMixin
 
@@ -136,21 +132,7 @@ class AugustOperatorSensor(AugustEntityMixin, RestoreEntity, Entity):
             self._operated_remote = lock_activity.operated_remote
             self._operated_keypad = lock_activity.operated_keypad
             self._operated_autorelock = lock_activity.operated_autorelock
-            self._operated_time = lock_activity.activity_end_time
             self._entity_picture = lock_activity.operator_thumbnail_url
-
-    @property
-    def unit_of_measurement(self):
-        """Return the unit of measurement."""
-        if self._state is None:
-            return
-        if self._operated_remote:
-            return OPERATION_METHOD_REMOTE
-        if self._operated_keypad:
-            return OPERATION_METHOD_KEYPAD
-        if self._operated_autorelock:
-            return OPERATION_METHOD_AUTORELOCK
-        return OPERATION_METHOD_MOBILE_DEVICE
 
     @property
     def device_state_attributes(self):
@@ -163,8 +145,6 @@ class AugustOperatorSensor(AugustEntityMixin, RestoreEntity, Entity):
             attributes[ATTR_OPERATION_KEYPAD] = self._operated_keypad
         if self._operated_autorelock is not None:
             attributes[ATTR_OPERATION_AUTORELOCK] = self._operated_autorelock
-        if self._operated_time is not None:
-            attributes[ATTR_TIME] = self._operated_time
 
         if self._operated_remote:
             attributes[ATTR_OPERATION_METHOD] = OPERATION_METHOD_REMOTE
@@ -194,8 +174,6 @@ class AugustOperatorSensor(AugustEntityMixin, RestoreEntity, Entity):
             self._operated_keypad = last_state.attributes[ATTR_OPERATION_KEYPAD]
         if ATTR_OPERATION_AUTORELOCK in last_state.attributes:
             self._operated_autorelock = last_state.attributes[ATTR_OPERATION_AUTORELOCK]
-        if ATTR_TIME in last_state.attributes:
-            self._operated_time = last_state.attributes[ATTR_TIME]
 
     @property
     def entity_picture(self):
