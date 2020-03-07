@@ -133,7 +133,7 @@ class AugustOperatorSensor(AugustEntityMixin, RestoreEntity, Entity):
         """Return the unit of measurement."""
         if self._operated_remote is None:
             return
-        return OPERATION_METHOD_REMOTE if self._operated_remote else OPERATION_METHOD_KEYPAD if self._operated_keypad else OPERATION_METHOD_KEYPAD
+        return OPERATION_METHOD_REMOTE if self._operated_remote else OPERATION_METHOD_KEYPAD if self._operated_keypad else OPERATION_METHOD_MOBILE_DEVICE
 
     @property
     def device_state_attributes(self):
@@ -147,7 +147,7 @@ class AugustOperatorSensor(AugustEntityMixin, RestoreEntity, Entity):
         if self._operated_time is not None:
             attributes[ATTR_TIME] = self._operated_time
         
-        attributes["method"] = OPERATION_METHOD_REMOTE if self._operated_remote else OPERATION_METHOD_KEYPAD if self._operated_keypad else OPERATION_METHOD_KEYPAD
+        attributes["method"] = OPERATION_METHOD_REMOTE if self._operated_remote else OPERATION_METHOD_KEYPAD if self._operated_keypad else OPERATION_METHOD_MOBILE_DEVICE
         return attributes
 
     async def async_added_to_hass(self):
