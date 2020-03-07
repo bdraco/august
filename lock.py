@@ -38,6 +38,9 @@ class AugustLock(AugustEntityMixin, RestoreEntity, LockDevice):
         self._device = device
         self._lock_status = None
         self._changed_by = None
+        self._operated_remote = None
+        self._operated_keypad = None
+        self._entity_picture = None
         self._available = False
         self._update_from_data()
 
@@ -77,10 +80,19 @@ class AugustLock(AugustEntityMixin, RestoreEntity, LockDevice):
         )
 
         if lock_activity is not None:
-            self._changed_by = lock_activity.operated_by
             update_lock_detail_from_activity(self._detail, lock_activity)
+            
+            self._changed_by = lock_activity.operated_by
+	    self._operated_remote = lock_activity.operated_remote
+	    self._operated_keypad = lock_activity.operated_keypad
+	    self._entity_picture = lock_activity.operator_thumbnail_url
 
         self._update_lock_status_from_detail()
+
+    @property
+    def entity_picture(self):
+        """Return the entity picture to use in the frontend, if any."""
+        return self._entity_picture
 
     @property
     def name(self):
@@ -111,7 +123,11 @@ class AugustLock(AugustEntityMixin, RestoreEntity, LockDevice):
 
         if self._detail.keypad is not None:
             attributes["keypad_battery_level"] = self._detail.keypad.battery_level
-
+        if self._operated_remote is not None:
+            attributes["operated_remote"] = self._operated_remote
+        if self._operated_keypad is not None:
+            attributes["operated_keypad"] = self._operated_keypad
+ 
         return attributes
 
     async def async_added_to_hass(self):
