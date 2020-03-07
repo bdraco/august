@@ -152,7 +152,7 @@ class AugustOperatorSensor(AugustEntityMixin, RestoreEntity, Entity):
         if not last_state:
             return
 
-        self._state = last_state.value
+        self._state = last_state.state
         if ATTR_ENTITY_PICTURE in last_state.attributes:
             self._entity_picture = last_state.attributes[ATTR_ENTITY_PICTURE]
         if "remote" in last_state.attributes:
