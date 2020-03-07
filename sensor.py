@@ -1,8 +1,11 @@
 """Support for August sensors."""
 import logging
 
+from august.activity import ActivityType
+
 from homeassistant.components.sensor import DEVICE_CLASS_BATTERY
 from homeassistant.core import callback
+from homeassistant.const import ATTR_TIME
 from homeassistant.helpers.entity import Entity
 
 from .const import DATA_AUGUST, DOMAIN
@@ -41,6 +44,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     data = hass.data[DOMAIN][config_entry.entry_id][DATA_AUGUST]
     devices = []
 
+    operation_sensors = []
     batteries = {
         "device_battery": [],
         "linked_keypad_battery": [],
@@ -50,6 +54,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     for device in data.locks:
         batteries["device_battery"].append(device)
         batteries["linked_keypad_battery"].append(device)
+        operation_sensors.append(device)
 
     for sensor_type in SENSOR_TYPES_BATTERY:
         for device in batteries[sensor_type]:
@@ -69,8 +74,85 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
                 )
                 devices.append(AugustBatterySensor(data, sensor_type, device))
 
+    for device in operation_sensors:
+        devices.append(AugustOperationSensor(data, device))
+
     async_add_entities(devices, True)
 
+
+class AugustOperationSensor(AugustEntityMixin, Entity):
+    """Representation of an August lock operation sensor."""
+
+    def __init__(self, data, device):
+        """Initialize the sensor."""
+        super().__init__(data, device)
+        self._data = data
+        self._device = device
+        self._state = None
+        self._operated_remote = None
+        self._operated_keypad = None
+        self._operated_time = None
+        self._available = False
+        self._update_from_data()
+
+    @property
+    def available(self):
+        """Return the availability of this sensor."""
+        return self._available
+
+    @property
+    def state(self):
+        """Return the state of the sensor."""
+        return self._state
+
+    @property
+    def name(self):
+        """Return the name of the sensor."""
+        return f"{self._device.device_name} Operation"
+
+    @callback
+    def _update_from_data(self):
+        """Get the latest state of the sensor and update activity."""
+        lock_activity = self._data.activity_stream.get_latest_device_activity(
+            self._device_id, [ActivityType.LOCK_OPERATION]
+        )
+
+        if lock_activity is not None:
+            self._available = True
+            self._state = lock_activity.operated_by
+            self._operated_remote = lock_activity.operated_remote
+            self._operated_keypad = lock_activity.operated_keypad
+            self._operated_time = lock_activity.activity_end_time
+            self._entity_picture = lock_activity.operator_thumbnail_url
+
+    @property
+    def device_state_attributes(self):
+        """Return the device specific state attributes."""
+        attributes = {}
+
+        # TODO: restore on restart
+        if self._operated_remote is not None:
+            attributes["operated_remote"] = self._operated_remote
+        # TODO: restore on restart
+        if self._operated_keypad is not None:
+            attributes["operated_keypad"] = self._operated_keypad
+        # TODO: restore on restart
+        if self._operated_time is not None:
+            attributes[ATTR_TIME] = self._operated_time
+
+
+        return attributes
+
+
+    @property
+    def entity_picture(self):
+        """Return the entity picture to use in the frontend, if any."""
+        return self._entity_picture
+
+    @property
+    def unique_id(self) -> str:
+        """Get the unique id of the device sensor."""
+        return f"{self._device_id}_lock_operation"
 
 class AugustBatterySensor(AugustEntityMixin, Entity):
     """Representation of an August sensor."""
