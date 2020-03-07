@@ -10,6 +10,7 @@ from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.restore_state import RestoreEntity
 
 from .const import (
+    ATTR_OPERATION_AUTORELOCK,
     ATTR_OPERATION_KEYPAD,
     ATTR_OPERATION_METHOD,
     ATTR_OPERATION_REMOTE,
@@ -18,6 +19,7 @@ from .const import (
     OPERATION_METHOD_KEYPAD,
     OPERATION_METHOD_MOBILE_DEVICE,
     OPERATION_METHOD_REMOTE,
+    OPERATION_METHOD_AUTORELOCK
 )
 from .entity import AugustEntityMixin
 
@@ -101,6 +103,7 @@ class AugustOperatorSensor(AugustEntityMixin, RestoreEntity, Entity):
         self._state = None
         self._operated_remote = None
         self._operated_keypad = None
+        self._operated_autorelock = None
         self._operated_time = None
         self._available = False
         self._update_from_data()
@@ -132,21 +135,22 @@ class AugustOperatorSensor(AugustEntityMixin, RestoreEntity, Entity):
             self._state = lock_activity.operated_by
             self._operated_remote = lock_activity.operated_remote
             self._operated_keypad = lock_activity.operated_keypad
+            self._operated_autorelock = lock_activity.operated_autorelock
             self._operated_time = lock_activity.activity_end_time
             self._entity_picture = lock_activity.operator_thumbnail_url
 
     @property
     def unit_of_measurement(self):
         """Return the unit of measurement."""
-        if self._operated_remote is None:
+        if self._state is None:
             return
-        return (
-            OPERATION_METHOD_REMOTE
-            if self._operated_remote
-            else OPERATION_METHOD_KEYPAD
-            if self._operated_keypad
-            else OPERATION_METHOD_MOBILE_DEVICE
-        )
+        if self._operated_remote:
+            return OPERATION_METHOD_REMOTE
+        if self._operated_keypad:
+            return OPERATION_METHOD_KEYPAD
+        if self._operated_autorelock:
+            return OPERATION_METHOD_AUTORELOCK
+        return OPERATION_METHOD_MOBILE_DEVICE
 
     @property
     def device_state_attributes(self):
@@ -157,16 +161,20 @@ class AugustOperatorSensor(AugustEntityMixin, RestoreEntity, Entity):
             attributes[ATTR_OPERATION_REMOTE] = self._operated_remote
         if self._operated_keypad is not None:
             attributes[ATTR_OPERATION_KEYPAD] = self._operated_keypad
+        if self._operated_autorelock is not None:
+            attributes[ATTR_OPERATION_AUTORELOCK] = self._operated_autorelock
         if self._operated_time is not None:
             attributes[ATTR_TIME] = self._operated_time
 
-        attributes[ATTR_OPERATION_METHOD] = (
-            OPERATION_METHOD_REMOTE
-            if self._operated_remote
-            else OPERATION_METHOD_KEYPAD
-            if self._operated_keypad
-            else OPERATION_METHOD_MOBILE_DEVICE
-        )
+        if self._operated_remote:
+            attributes[ATTR_OPERATION_METHOD] = OPERATION_METHOD_REMOTE
+        elif self._operated_keypad:
+            attributes[ATTR_OPERATION_METHOD] = OPERATION_METHOD_KEYPAD
+        elif self._operated_autorelock:
+            attributes[ATTR_OPERATION_METHOD] = OPERATION_METHOD_AUTORELOCK
+        else:
+            attributes[ATTR_OPERATION_METHOD] = OPERATION_METHOD_MOBILE_DEVICE
+
         return attributes
 
     async def async_added_to_hass(self):
@@ -184,6 +192,8 @@ class AugustOperatorSensor(AugustEntityMixin, RestoreEntity, Entity):
             self._operated_remote = last_state.attributes[ATTR_OPERATION_REMOTE]
         if ATTR_OPERATION_KEYPAD in last_state.attributes:
             self._operated_keypad = last_state.attributes[ATTR_OPERATION_KEYPAD]
+        if ATTR_OPERATION_AUTORELOCK in last_state.attributes:
+            self._operated_autorelock = last_state.attributes[ATTR_OPERATION_AUTORELOCK]
         if ATTR_TIME in last_state.attributes:
             self._operated_time = last_state.attributes[ATTR_TIME]
 
