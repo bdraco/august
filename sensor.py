@@ -9,7 +9,9 @@ from homeassistant.const import ATTR_TIME, ATTR_ENTITY_PICTURE
 from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.restore_state import RestoreEntity
 
-from .const import DATA_AUGUST, DOMAIN
+from .const import DATA_AUGUST, DOMAIN, OPERATION_METHOD_REMOTE, OPERATION_METHOD_KEYPAD, OPERATION_METHOD_PHONE
+
+
 from .entity import AugustEntityMixin
 
 _LOGGER = logging.getLogger(__name__)
@@ -127,21 +129,25 @@ class AugustOperatorSensor(AugustEntityMixin, RestoreEntity, Entity):
             self._entity_picture = lock_activity.operator_thumbnail_url
 
     @property
+    def unit_of_measurement(self):
+        """Return the unit of measurement."""
+        if self._operated_remote is None:
+            return
+        return OPERATION_METHOD_REMOTE if self._operated_remote else OPERATION_METHOD_KEYPAD if self._operated_keypad else OPERATION_METHOD_KEYPAD
+
+    @property
     def device_state_attributes(self):
         """Return the device specific state attributes."""
         attributes = {}
 
-        # TODO: restore on restart
         if self._operated_remote is not None:
             attributes["remote"] = self._operated_remote
-        # TODO: restore on restart
         if self._operated_keypad is not None:
             attributes["keypad"] = self._operated_keypad
-        # TODO: restore on restart
         if self._operated_time is not None:
             attributes[ATTR_TIME] = self._operated_time
-
-
+        
+        attributes["method"] = OPERATION_METHOD_REMOTE if self._operated_remote else OPERATION_METHOD_KEYPAD if self._operated_keypad else OPERATION_METHOD_KEYPAD
         return attributes
 
     async def async_added_to_hass(self):

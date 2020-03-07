@@ -20,6 +20,12 @@ DATA_AUGUST = "data_august"
 DEFAULT_NAME = "August"
 DOMAIN = "august"
 
+OPERATION_METHOD_REMOTE = "remote"
+OPERATION_METHOD_KEYPAD = "keypad"
+OPERATION_METHOD_PHONE  = "phone"
+
+
+
 # Limit battery, online, and hardware updates to hourly
 # in order to reduce the number of api requests and
 # avoid hitting rate limits
