@@ -5,7 +5,7 @@ from august.activity import ActivityType
 
 from homeassistant.components.sensor import DEVICE_CLASS_BATTERY
 from homeassistant.core import callback
-from homeassistant.const import ATTR_TIME
+from homeassistant.const import ATTR_TIME, ATTR_ENTITY_PICTURE
 from homeassistant.helpers.entity import Entity
 
 from .const import DATA_AUGUST, DOMAIN
@@ -75,12 +75,12 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
                 devices.append(AugustBatterySensor(data, sensor_type, device))
 
     for device in operation_sensors:
-        devices.append(AugustOperationSensor(data, device))
+        devices.append(AugustOperatorSensor(data, device))
 
     async_add_entities(devices, True)
 
 
-class AugustOperationSensor(AugustEntityMixin, Entity):
+class AugustOperatorSensor(AugustEntityMixin, Entity):
     """Representation of an August lock operation sensor."""
 
     def __init__(self, data, device):
@@ -132,16 +132,34 @@ class AugustOperationSensor(AugustEntityMixin, Entity):
 
         # TODO: restore on restart
         if self._operated_remote is not None:
-            attributes["operated_remote"] = self._operated_remote
+            attributes["remote"] = self._operated_remote
         # TODO: restore on restart
         if self._operated_keypad is not None:
-            attributes["operated_keypad"] = self._operated_keypad
+            attributes["keypad"] = self._operated_keypad
         # TODO: restore on restart
         if self._operated_time is not None:
             attributes[ATTR_TIME] = self._operated_time
 
 
         return attributes
+
+    async def async_added_to_hass(self):
+        """Restore ATTR_CHANGED_BY on startup since it is likely no longer in the activity log."""
+        await super().async_added_to_hass()
+
+        last_state = await self.async_get_last_state()
+        if not last_state:
+            return
+
+        self._state = last_state
+        if ATTR_ENTITY_PICTURE in last_state.attributes:
+            self._entity_picture = last_state.attributes[ATTR_ENTITY_PICTURE]
+        if "remote" in last_state.attributes:
+            self._operated_remote = last_state.attributes["remote"]
+        if "keypad" in last_state.attributes:
+            self._operated_keypad = last_state.attributes["keypad"]
+        if ATTR_TIME in last_state.attributes:
+            self._operated_time = last_state.attributes["time"]
 
 
     @property
@@ -152,7 +170,7 @@ class AugustOperationSensor(AugustEntityMixin, Entity):
     @property
     def unique_id(self) -> str:
         """Get the unique id of the device sensor."""
-        return f"{self._device_id}_lock_operation"
+        return f"{self._device_id}_lock_operator"
 
 class AugustBatterySensor(AugustEntityMixin, Entity):
     """Representation of an August sensor."""

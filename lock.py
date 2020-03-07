@@ -135,6 +135,10 @@ class AugustLock(AugustEntityMixin, RestoreEntity, LockDevice):
 
         if ATTR_CHANGED_BY in last_state.attributes:
             self._changed_by = last_state.attributes[ATTR_CHANGED_BY]
+        if "operated_remote" in last_state.attributes:
+            self._operated_remote = last_state.attributes["operated_remote"]
+        if "operated_keypad" in last_state.attributes:
+            self._operated_keypad = last_state.attributes["operated_keypad"]
 
     @property
     def unique_id(self) -> str:
