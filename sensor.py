@@ -106,6 +106,7 @@ class AugustOperatorSensor(AugustEntityMixin, RestoreEntity, Entity):
         self._operated_autorelock = None
         self._operated_time = None
         self._available = False
+        self._entity_picture = None
         self._update_from_data()
 
     @property
