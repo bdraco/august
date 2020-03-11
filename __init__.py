@@ -8,10 +8,10 @@ from august.authenticator import ValidationResult
 from august.exceptions import AugustApiAIOHTTPError
 import voluptuous as vol
 
-from homeassistant.config_entries import SOURCE_IMPORT, ConfigEntry
+from homeassistant.config_entries import SOURCE_USER, SOURCE_IMPORT, ConfigEntry
 from homeassistant.const import CONF_PASSWORD, CONF_TIMEOUT, CONF_USERNAME
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import HomeAssistantError
+from homeassistant.exceptions import ConfigEntryNotReady, HomeAssistantError
 import homeassistant.helpers.config_validation as cv
 
 from .activity import ActivityStream
@@ -52,7 +52,6 @@ CONFIG_SCHEMA = vol.Schema(
     extra=vol.ALLOW_EXTRA,
 )
 
-
 async def async_request_validation(hass, config_entry, august_gateway):
     """Request a new verification code from the user."""
 
@@ -61,41 +60,12 @@ async def async_request_validation(hass, config_entry, august_gateway):
     # instead of using the legacy configurator
     #
     _LOGGER.error("Access token is no longer valid.")
-    configurator = hass.components.configurator
-    entry_id = config_entry.entry_id
-
-    async def async_august_configuration_validation_callback(data):
-        code = data.get(VERIFICATION_CODE_KEY)
-        result = await august_gateway.authenticator.async_validate_verification_code(
-            code
+    hass.async_create_task(
+        hass.config_entries.flow.async_init(
+            DOMAIN,
+            context={"source": SOURCE_USER},
+            data=config_entry.data
         )
-
-        if result == ValidationResult.INVALID_VERIFICATION_CODE:
-            configurator.async_notify_errors(
-                hass.data[DOMAIN][entry_id][TWO_FA_REVALIDATE],
-                "Invalid verification code, please make sure you are using the latest code and try again.",
-            )
-        elif result == ValidationResult.VALIDATED:
-            return await async_setup_august(hass, config_entry, august_gateway)
-
-        return False
-
-    if TWO_FA_REVALIDATE not in hass.data[DOMAIN][entry_id]:
-        await august_gateway.authenticator.async_send_verification_code()
-
-    entry_data = config_entry.data
-    login_method = entry_data.get(CONF_LOGIN_METHOD)
-    username = entry_data.get(CONF_USERNAME)
-
-    hass.data[DOMAIN][entry_id][TWO_FA_REVALIDATE] = configurator.async_request_config(
-        f"{DEFAULT_NAME} ({username})",
-        async_august_configuration_validation_callback,
-        description="August must be re-verified. Please check your {} ({}) and enter the verification "
-        "code below".format(login_method, username),
-        submit_caption="Verify",
-        fields=[
-            {"id": VERIFICATION_CODE_KEY, "name": "Verification code", "type": "string"}
-        ],
     )
     return
 
@@ -164,9 +134,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     """Set up August from a config entry."""
 
     august_gateway = AugustGateway(hass)
-    await august_gateway.async_setup(entry.data)
 
-    return await async_setup_august(hass, entry, august_gateway)
+    try:
+        await august_gateway.async_setup(entry.data)
+        return await async_setup_august(hass, entry, august_gateway)
+    except asyncio.TimeoutError:
+        raise ConfigEntryNotReady
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
