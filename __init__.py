@@ -224,7 +224,9 @@ class AugustData(AugustSubscriberMixin):
         return self._device_detail_by_id[device_id]
 
     async def _async_refresh(self, time):
+        _LOGGER.warning("About to call for a refresh at: %s", time)
         await self._async_refresh_device_detail_by_ids(self._subscriptions.keys())
+        _LOGGER.warning("Finished call for a refresh at: %s", time)
 
     async def _async_refresh_device_detail_by_ids(self, device_ids_list):
         """Refresh each device in sequence.
