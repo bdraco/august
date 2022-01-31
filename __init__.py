@@ -107,11 +107,13 @@ class AugustData(AugustSubscriberMixin):
     async def async_setup(self):
         """Async setup of august device data and activities."""
         token = self._august_gateway.access_token
+        _LOGGER.warning("About get user locks and doorbells")
         user_data, locks, doorbells = await asyncio.gather(
             self._api.async_get_user(token),
             self._api.async_get_operable_locks(token),
             self._api.async_get_doorbells(token),
         )
+        _LOGGER.warning("Finished get user locks and doorbells")
         if not doorbells:
             doorbells = []
         if not locks:
@@ -132,22 +134,32 @@ class AugustData(AugustSubscriberMixin):
         self._remove_inoperative_locks()
         self._remove_inoperative_doorbells()
 
+        _LOGGER.warning("About to register to pubnub")
         pubnub = AugustPubNub()
         for device in self._device_detail_by_id.values():
             pubnub.register_device(device)
+        _LOGGER.warning("Finished register to pubnub")
 
         self.activity_stream = ActivityStream(
             self._hass, self._api, self._august_gateway, self._house_ids, pubnub
         )
+
+        _LOGGER.warning("About to setup activity stream")
         await self.activity_stream.async_setup()
+        _LOGGER.warning("Finished setting up activity stream")
+
+        _LOGGER.warning("About to subscribe to pubnub")
         pubnub.subscribe(self.async_pubnub_message)
         self._pubnub_unsub = async_create_pubnub(user_data["UserID"], pubnub)
+        _LOGGER.warning("Finished subscribe to pubnub")
 
+        _LOGGER.warning("About to initial sync")
         if self._locks_by_id:
             # Do not prevent setup as the sync can timeout
             # but it is not a fatal error as the lock
             # will recover automatically when it comes back online.
             asyncio.create_task(self._async_initial_sync())
+        _LOGGER.warning("Finished initial sync")
 
     async def _async_initial_sync(self):
         """Attempt to request an initial sync."""

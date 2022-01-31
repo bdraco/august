@@ -80,7 +80,9 @@ class AugustGateway:
             ),
         )
 
+        _LOGGER.warning("About to setup authentication")
         await self.authenticator.async_setup_authentication()
+        _LOGGER.warning("Finished setup authentication")
 
     async def async_authenticate(self):
         """Authenticate with the details provided to setup."""
