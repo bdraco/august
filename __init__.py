@@ -107,12 +107,20 @@ class AugustData(AugustSubscriberMixin):
     async def async_setup(self):
         """Async setup of august device data and activities."""
         token = self._august_gateway.access_token
-        _LOGGER.warning("About get user locks and doorbells")
-        user_data, locks, doorbells = await asyncio.gather(
-            self._api.async_get_user(token),
-            self._api.async_get_operable_locks(token),
-            self._api.async_get_doorbells(token),
-        )
+        _LOGGER.warning("About to get user locks and doorbells")
+
+        _LOGGER.warning("About get user")
+        user_data = await self._api.async_get_user(token)
+        _LOGGER.warning("Finished get user")
+
+        _LOGGER.warning("About get locks")
+        locks = await self._api.async_get_operable_locks(token)
+        _LOGGER.warning("Finished get locks")
+
+        _LOGGER.warning("About get doorbells")
+        doorbells = await self._api.async_get_doorbells(token)
+        _LOGGER.warning("Finished get doorbells")
+
         _LOGGER.warning("Finished get user locks and doorbells")
         if not doorbells:
             doorbells = []
@@ -123,9 +131,11 @@ class AugustData(AugustSubscriberMixin):
         self._locks_by_id = {device.device_id: device for device in locks}
         self._house_ids = {device.house_id for device in chain(locks, doorbells)}
 
+        _LOGGER.warning("About to refresh devices")
         await self._async_refresh_device_detail_by_ids(
             [device.device_id for device in chain(locks, doorbells)]
         )
+        _LOGGER.warning("Finished refresh devices")
 
         # We remove all devices that we are missing
         # detail as we cannot determine if they are usable.
@@ -166,18 +176,24 @@ class AugustData(AugustSubscriberMixin):
         # We don't care if this fails because we only want to wake
         # locks that are actually online anyways and they will be
         # awake when they come back online
-        with contextlib.suppress(
-            (asyncio.TimeoutError, ClientResponseError, CannotConnect)
+        for result in await asyncio.gather(
+            *[
+                self.async_status_async(
+                    device_id, bool(detail.bridge and detail.bridge.hyper_bridge)
+                )
+                for device_id, detail in self._device_detail_by_id.items()
+                if device_id in self._locks_by_id
+            ],
+            return_exceptions=True,
         ):
-            await asyncio.gather(
-                *[
-                    self.async_status_async(
-                        device_id, bool(detail.bridge and detail.bridge.hyper_bridge)
-                    )
-                    for device_id, detail in self._device_detail_by_id.items()
-                    if device_id in self._locks_by_id
-                ]
-            )
+            if isinstance(result, Exception) and not isinstance(
+                result, (asyncio.TimeoutError, ClientResponseError, CannotConnect)
+            ):
+                _LOGGER.warning(
+                    "Unexpected exception during initial sync: %s",
+                    result,
+                    exc_info=result,
+                )
 
     @callback
     def async_pubnub_message(self, device_id, date_time, message):
