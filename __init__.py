@@ -194,11 +194,9 @@ class AugustData(AugustSubscriberMixin):
             ],
             return_exceptions=True,
         ):
-            if isinstance(result, Exception) and not isinstance(
-                result, (asyncio.TimeoutError, ClientResponseError, CannotConnect)
-            ):
+            if isinstance(result, Exception):
                 _LOGGER.warning(
-                    "Unexpected exception during initial sync: %s",
+                    "Exception during initial sync: %s",
                     result,
                     exc_info=result,
                 )
@@ -234,9 +232,15 @@ class AugustData(AugustSubscriberMixin):
         return self._device_detail_by_id[device_id]
 
     async def _async_refresh(self, time):
-        return await self._async_refresh_device_detail_by_ids(
+        for result in await self._async_refresh_device_detail_by_ids(
             self._subscriptions.keys()
-        )
+        ):
+            if isinstance(result, Exception):
+                _LOGGER.warning(
+                    "Exception during refresh: %s",
+                    result,
+                    exc_info=result,
+                )    
 
     async def _async_refresh_device_detail_by_ids(self, device_ids_list):
         return await asyncio.gather(
