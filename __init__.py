@@ -132,9 +132,17 @@ class AugustData(AugustSubscriberMixin):
         self._house_ids = {device.house_id for device in chain(locks, doorbells)}
 
         _LOGGER.warning("About to refresh devices")
-        await self._async_refresh_device_detail_by_ids(
+        for result in await self._async_refresh_device_detail_by_ids(
             [device.device_id for device in chain(locks, doorbells)]
-        )
+        ):
+            if isinstance(result, Exception) and not isinstance(
+                result, (asyncio.TimeoutError, ClientResponseError, CannotConnect)
+            ):
+                _LOGGER.warning(
+                    "Unexpected exception during first refresh: %s",
+                    result,
+                    exc_info=result,
+                )
         _LOGGER.warning("Finished refresh devices")
 
         # We remove all devices that we are missing
@@ -226,14 +234,17 @@ class AugustData(AugustSubscriberMixin):
         return self._device_detail_by_id[device_id]
 
     async def _async_refresh(self, time):
-        await self._async_refresh_device_detail_by_ids(self._subscriptions.keys())
+        return await self._async_refresh_device_detail_by_ids(
+            self._subscriptions.keys()
+        )
 
     async def _async_refresh_device_detail_by_ids(self, device_ids_list):
-        await asyncio.gather(
+        return await asyncio.gather(
             *(
                 self._async_refresh_device_detail_by_id(device_id)
                 for device_id in device_ids_list
-            )
+            ),
+            return_exceptions=True,
         )
 
     async def _async_refresh_device_detail_by_id(self, device_id):
