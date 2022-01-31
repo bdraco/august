@@ -232,15 +232,7 @@ class AugustData(AugustSubscriberMixin):
         return self._device_detail_by_id[device_id]
 
     async def _async_refresh(self, time):
-        for result in await self._async_refresh_device_detail_by_ids(
-            self._subscriptions.keys()
-        ):
-            if isinstance(result, Exception):
-                _LOGGER.warning(
-                    "Exception during refresh: %s",
-                    result,
-                    exc_info=result,
-                )
+        await self._async_refresh_device_detail_by_ids(self._subscriptions.keys())
 
     async def _async_refresh_device_detail_by_ids(self, device_ids_list):
         """Refresh each device in sequence.
