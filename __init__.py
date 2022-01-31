@@ -240,7 +240,7 @@ class AugustData(AugustSubscriberMixin):
                     "Exception during refresh: %s",
                     result,
                     exc_info=result,
-                )    
+                )
 
     async def _async_refresh_device_detail_by_ids(self, device_ids_list):
         return await asyncio.gather(
