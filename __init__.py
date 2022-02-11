@@ -1,6 +1,5 @@
 """Support for August devices."""
 import asyncio
-import contextlib
 from itertools import chain
 import logging
 
@@ -46,7 +45,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         raise ConfigEntryAuthFailed from err
     except asyncio.TimeoutError as err:
         raise ConfigEntryNotReady("Timed out connecting to august api") from err
-    except (ClientResponseError, CannotConnect) as err:
+    except (AugustApiAIOHTTPError, ClientResponseError, CannotConnect) as err:
         raise ConfigEntryNotReady from err
 
 
@@ -76,6 +75,7 @@ async def async_setup_august(
         hass.config_entries.async_update_entry(config_entry, data=config_data)
 
     await august_gateway.async_authenticate()
+    await august_gateway.async_refresh_access_token_if_needed()
 
     hass.data.setdefault(DOMAIN, {})
     data = hass.data[DOMAIN][config_entry.entry_id] = {
@@ -107,21 +107,11 @@ class AugustData(AugustSubscriberMixin):
     async def async_setup(self):
         """Async setup of august device data and activities."""
         token = self._august_gateway.access_token
-        _LOGGER.warning("About to get user locks and doorbells")
-
-        _LOGGER.warning("About get user")
-        user_data = await self._api.async_get_user(token)
-        _LOGGER.warning("Finished get user")
-
-        _LOGGER.warning("About get locks")
-        locks = await self._api.async_get_operable_locks(token)
-        _LOGGER.warning("Finished get locks")
-
-        _LOGGER.warning("About get doorbells")
-        doorbells = await self._api.async_get_doorbells(token)
-        _LOGGER.warning("Finished get doorbells")
-
-        _LOGGER.warning("Finished get user locks and doorbells")
+        user_data, locks, doorbells = await asyncio.gather(
+            self._api.async_get_user(token),
+            self._api.async_get_operable_locks(token),
+            self._api.async_get_doorbells(token),
+        )
         if not doorbells:
             doorbells = []
         if not locks:
@@ -131,11 +121,9 @@ class AugustData(AugustSubscriberMixin):
         self._locks_by_id = {device.device_id: device for device in locks}
         self._house_ids = {device.house_id for device in chain(locks, doorbells)}
 
-        _LOGGER.warning("About to refresh devices")
         await self._async_refresh_device_detail_by_ids(
             [device.device_id for device in chain(locks, doorbells)]
         )
-        _LOGGER.warning("Finished refresh devices")
 
         # We remove all devices that we are missing
         # detail as we cannot determine if they are usable.
@@ -144,32 +132,22 @@ class AugustData(AugustSubscriberMixin):
         self._remove_inoperative_locks()
         self._remove_inoperative_doorbells()
 
-        _LOGGER.warning("About to register to pubnub")
         pubnub = AugustPubNub()
         for device in self._device_detail_by_id.values():
             pubnub.register_device(device)
-        _LOGGER.warning("Finished register to pubnub")
 
         self.activity_stream = ActivityStream(
             self._hass, self._api, self._august_gateway, self._house_ids, pubnub
         )
-
-        _LOGGER.warning("About to setup activity stream")
         await self.activity_stream.async_setup()
-        _LOGGER.warning("Finished setting up activity stream")
-
-        _LOGGER.warning("About to subscribe to pubnub")
         pubnub.subscribe(self.async_pubnub_message)
         self._pubnub_unsub = async_create_pubnub(user_data["UserID"], pubnub)
-        _LOGGER.warning("Finished subscribe to pubnub")
 
-        _LOGGER.warning("About to initial sync")
         if self._locks_by_id:
             # Do not prevent setup as the sync can timeout
             # but it is not a fatal error as the lock
             # will recover automatically when it comes back online.
             asyncio.create_task(self._async_initial_sync())
-        _LOGGER.warning("Finished initial sync")
 
     async def _async_initial_sync(self):
         """Attempt to request an initial sync."""
@@ -186,9 +164,11 @@ class AugustData(AugustSubscriberMixin):
             ],
             return_exceptions=True,
         ):
-            if isinstance(result, Exception):
+            if isinstance(result, Exception) and not isinstance(
+                result, (asyncio.TimeoutError, ClientResponseError, CannotConnect)
+            ):
                 _LOGGER.warning(
-                    "Exception during initial sync: %s",
+                    "Unexpected exception during initial sync: %s",
                     result,
                     exc_info=result,
                 )
@@ -224,9 +204,7 @@ class AugustData(AugustSubscriberMixin):
         return self._device_detail_by_id[device_id]
 
     async def _async_refresh(self, time):
-        _LOGGER.warning("About to call for a refresh at: %s", time)
         await self._async_refresh_device_detail_by_ids(self._subscriptions.keys())
-        _LOGGER.warning("Finished call for a refresh at: %s", time)
 
     async def _async_refresh_device_detail_by_ids(self, device_ids_list):
         """Refresh each device in sequence.
